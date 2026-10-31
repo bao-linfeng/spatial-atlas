@@ -25,7 +25,7 @@ export function buildRoads(ctx, { branches }) {
   const latOf = p => (p[0] - qa[0][0]) * E[0] + (p[1] - qa[0][1]) * E[1];
   const sOf = p => (p[0] - qa[0][0]) * qDir[0] + (p[1] - qa[0][1]) * qDir[1];
   const S0 = DECK_START, deckLen = qLen - S0;
-  const sNorth = (P(0, PLATE.y0)[1] - qa[0][1]) / qDir[1];          // 沙盘北缘处的 s（负值）
+  const sNorth = (PLATE.z0 - qa[0][1]) / qDir[1];          // 沙盘北缘处的 s（负值）
   {
     const mid = axisPt(S0 + deckLen / 2, 0);
     const deck = new THREE.Mesh(new THREE.BoxGeometry(34, 1.8, deckLen), M.concrete);
@@ -111,7 +111,7 @@ export function buildRoads(ctx, { branches }) {
   }
   // 周边支路
   for (const r of LOCAL_ROADS) {
-    const pts = smooth(r.pts.map(p => P(...p)), 6);
+    const pts = smooth(r.pts, 6);
     groundRoad(ctx, pts, r.w * PX * 1.4, { mat: roadMats.local, walk: 1.5, lanes: [[0, rand() < 0.5 ? 1 : -1]], speed: 6, count: 1, offset: 1.6 });
   }
 
@@ -149,7 +149,7 @@ export function buildRoads(ctx, { branches }) {
   const railGaps = { '-1': [], '1': [] };
   const onDeck = p => Math.abs(latOf(p)) < 16.9 && sOf(p) > S0 - 1;
   for (const r of ELEVATED_RAMPS) {
-    const line = smooth([hwJoin(r.join, 0), hwJoin(r.join, 22), ...r.pts.map(p => P(...p)), ...r.tail.map(([s, l]) => axisPt(s, l))], 5);
+    const line = smooth([hwJoin(r.join, 0), hwJoin(r.join, 22), ...r.pts, ...r.tail.map(([s, l]) => axisPt(s, l))], 5);
     const cum = [0];
     for (let i = 1; i < line.length; i++) cum.push(cum[i - 1] + len2(sub2(line[i], line[i - 1])));
     let L0, L1;
@@ -200,7 +200,7 @@ export function buildRoads(ctx, { branches }) {
 
   // ── 沪蓉高速连接线（路堤式，收费站处加宽）──
   let tollI = 0;
-  hw.forEach((p, i) => { if (len2(sub2(p, TOLL.at)) < len2(sub2(hw[tollI], TOLL.at))) tollI = i; });
+  hw.forEach((p, i) => { if (len2(sub2(p, TOLL.pos)) < len2(sub2(hw[tollI], TOLL.pos))) tollI = i; });
   // 宽度：西端断面容纳三路（≈49 m）渐收至 34 m，收费站处加宽
   const hwW = hwCum.map(L => 34 + 15 * (1 - smoothstep(0, 90, L)) + 34 * Math.exp(-(((L - hwCum[tollI]) / 70) ** 2)));
   world.add(Object.assign(new THREE.Mesh(ribbon(hw, hwW.map((w, i) => w + 12 * smoothstep(0, 60, hwCum[i])), hwY.map(y => y - 0.6)), M.bank), { receiveShadow: true }));

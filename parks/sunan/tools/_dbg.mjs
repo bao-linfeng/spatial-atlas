@@ -1,4 +1,4 @@
-import { FORESTS, P, BOUNDARY } from '../layout.js';
+import { FORESTS, BOUNDARY } from '../layout.js';
 function pointInPoly(x, z, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -8,7 +8,7 @@ function pointInPoly(x, z, poly) {
   return inside;
 }
 for (const f of FORESTS) {
-  const poly = f.map(p => P(...p));
+  const poly = f;
   const xs = poly.map(p => p[0]), zs = poly.map(p => p[1]);
   const x0 = Math.min(...xs), x1 = Math.max(...xs), z0 = Math.min(...zs), z1 = Math.max(...zs);
   const n = Math.floor((x1 - x0) * (z1 - z0) / 95);

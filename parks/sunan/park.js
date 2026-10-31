@@ -1,14 +1,13 @@
-import { P, G, PLATE, GRID_ANGLE, PLAZA, SOUTH_GATE } from './layout.js';
+import { G, PLATE, GRID_ANGLE, TOWERS, PLAZA, SOUTH_GATE } from './layout.js';
 import { buildWater, buildContext } from './build/surroundings.js';
 import { buildRoads } from './build/roads.js';
 import { buildCampus } from './build/campus.js';
 import { plantTrees } from './build/trees.js';
 
-const [px0, pz0] = P(PLATE.x0, PLATE.y0), [px1, pz1] = P(PLATE.x1, PLATE.y1);
 const HOME = { pos: [-170, 360, 640], target: [-10, 10, -10] };
 
 // 导览章节
-const A = G(-385, 235), PL = P(...PLAZA.px), AX = G(37, 40);
+const A = TOWERS.find(t => t.id === 'A').pos, PL = PLAZA.pos, AX = G(37, 40);
 const CHAPTERS = [
   { title: '区位', en: 'LOCATION', pos: [560, 560, 700], target: [0, 0, 0], dur: 5,
     text: '西临青洋路高架，北经青龙收费站连接线接入 G42 沪蓉高速，南沿创客路、东南望北塘河——三面路网、一面临水。' },
@@ -52,7 +51,7 @@ export default {
     ],
     disclaimer: '本模型为示意性三维重建，非测绘成果。独栋数量与排布按资料与底图推算，单体细部为程序化生成。',
   },
-  plate: { x0: px0, x1: px1, z0: pz0, z1: pz1 },
+  plate: PLATE,
   gridAngle: GRID_ANGLE,
   stage: {
     start: [-1100, 900, 1300], maxDistance: 1800, fog: [1600, 4200],

@@ -19,11 +19,11 @@ export function buildContext(ctx) {
   const ctxMat = { blue: M.ctxBlue, gray: M.ctxGray };
   for (const b of CONTEXT_BLOCKS) {
     const mat = ctxMat[b.c] || M.ctx;
-    if (b.r) {
-      const [x0, z0] = P(b.r[0], b.r[1]), [x1, z1] = P(b.r[2], b.r[3]);
+    if (b.rect) {
+      const [x0, z0, x1, z1] = b.rect;
       contextBox(ctx, (x0 + x1) / 2, (z0 + z1) / 2, x1 - x0, z1 - z0, b.h, 0, mat);
     } else {
-      const [x, z] = P(...b.at);
+      const [x, z] = b.pos;
       contextBox(ctx, x, z, b.w, b.d, b.h, b.a, mat);
     }
   }

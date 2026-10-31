@@ -45,7 +45,7 @@ img.onload = () => {
     line(L.HIGHWAY.map(m2p), '#f80');
     line(L.CHUANGKE_ROAD.map(m2p), '#0ff');
     line([...L.BOUNDARY.map(m2p), m2p(L.BOUNDARY[0])], '#08f');
-    for (const r of L.ELEVATED_RAMPS) line(r.pts, '#f00', 3);
+    for (const r of L.ELEVATED_RAMPS) line(r.pts.map(m2p), '#f00', 3);
   }
 };
 </script>

@@ -3,8 +3,11 @@ import { V3, insertY, smooth, densify, ribbon, flatPoly, offsetLine } from '../.
 import { signTexture } from '../../../core/textures.js';
 import { makeBlock, roofKit, placeBuilding, tower } from '../../../core/kit/buildings.js';
 import {
-  P, G, PX, GRID_ANGLE, BOUNDARY, PARK_ROADS, NORTH_ROADS, AXIS, SOUTH_GATE, TOWERS, PLAZA, CLUB, VILLAS,
+  P, G, PX, GRID_ANGLE, BOUNDARY, PARK_ROADS, NORTH_ROADS, SOUTH_GATE, TOWERS, PLAZA, CLUB, VILLAS,
 } from '../layout.js';
+
+// 中轴景观带范围（网格坐标）
+const AXIS = { u0: 8, u1: 58, v0: -53, v1: 345 };
 
 // 园区内部：地块绿地、内部路网、中轴景观带、南入口、塔楼、下沉式商业广场、会所、风车式独栋
 export function buildCampus(ctx) {
@@ -23,7 +26,7 @@ export function buildCampus(ctx) {
 
   // 内部道路
   for (const r of PARK_ROADS) {
-    const pts = densify(r.pts.map(p => G(...p)), 8);
+    const pts = densify(r.pts, 8);
     const w = r.w * PX;
     park.add(Object.assign(new THREE.Mesh(ribbon(pts, w, 0.75, 18), roadMats.park), { receiveShadow: true }));
     ctx.blockRoad(pts, w);
@@ -31,13 +34,13 @@ export function buildCampus(ctx) {
     for (let s = 0; s < pts.length; s += 3) ctx.lampSpots.push(V3(...insertY(offsetLine(pts, w / 2 + 1.5)[s], 4.5)));
   }
   for (const r of NORTH_ROADS) {
-    const pts = smooth(r.pts.map(p => P(...p)), 6);
+    const pts = smooth(r.pts, 6);
     const w = r.w * PX;
     park.add(Object.assign(new THREE.Mesh(ribbon(pts, w, 0.74, 18), roadMats.park), { receiveShadow: true }));
     ctx.blockRoad(pts, w);
     for (let s = 0; s < pts.length; s += 5) ctx.lampSpots.push(V3(...insertY(offsetLine(pts, w / 2 + 1.5)[s], 4.5)));
   }
-  ctx.carPaths.push({ pts: smooth(NORTH_ROADS[0].pts.map(p => P(...p)), 6), y: 0.8, dir: 1, speed: 5, count: 3, offset: 1.6 });
+  ctx.carPaths.push({ pts: smooth(NORTH_ROADS[0].pts, 6), y: 0.8, dir: 1, speed: 5, count: 3, offset: 1.6 });
 
   // 中轴景观带：草坪 + 水渠 + 两侧铺装
   {
@@ -84,11 +87,11 @@ export function buildCampus(ctx) {
 
 
   // 高层 / 多层
-  for (const t of TOWERS) tower(ctx, t, t.at ? G(...t.at) : P(...t.px));
+  for (const t of TOWERS) tower(ctx, t, t.pos);
 
   // 下沉式商业广场
   {
-    const [cx, cz] = P(...PLAZA.px);
+    const [cx, cz] = PLAZA.pos;
     const root = new THREE.Group(); root.position.set(cx, 0, cz); root.rotation.y = GRID_ANGLE;
     const grow = new THREE.Group(); root.add(grow); park.add(root);
     const rec = { id: 'P', name: PLAZA.name, f: 2, w: PLAZA.rx * 2, d: PLAZA.rz * 2, info: '园区北部核心，下沉庭院与高层裙房结合，形成全天候城市活力空间。卫星图上为椭圆形白色环状屋面。' };
@@ -122,7 +125,7 @@ export function buildCampus(ctx) {
 
   // 会所
   {
-    const at = G(...CLUB.at);
+    const at = CLUB.pos;
     const rec = { id: 'Q', name: CLUB.name, ...CLUB, info: '设计说明中会所位于园区南侧，靠近中轴与南入口。' };
     const { root, grow } = placeBuilding(ctx, rec, at);
     const body = new THREE.Mesh(new THREE.BoxGeometry(CLUB.w - 4, 8, CLUB.d - 4), M.glass);
@@ -135,7 +138,7 @@ export function buildCampus(ctx) {
 
   // 风车式花园独栋
   VILLAS.forEach((v, i) => {
-    const at = G(...v.at);
+    const at = v.pos;
     const rec = { ...v, name: `花园独栋 ${v.id}`, style: 'villa',
       info: `${v.f} 层花园独栋办公，四合院式布局、风车式错位排布。资料显示独栋面积约 1688–1848㎡。` };
     const { root, grow } = placeBuilding(ctx, rec, at);
