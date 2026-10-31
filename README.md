@@ -40,7 +40,8 @@ node server.mjs          # 默认端口 5191；指定端口：node server.mjs 80
 ## 目录结构
 
 ```
-index.html          系列首页
+index.html          系列首页：常州区县图 + 园区目录
+home/               首页脚本与样式；changzhou.json 为区县边界（DataV.GeoAtlas，高德坐标）
 server.mjs          本地静态服务（Node 内置模块，无依赖）
 core/               系列共用
   viewer.js         组装场景与交互（点选、生长、夜景、白模、视角工具）
@@ -52,6 +53,7 @@ core/               系列共用
   context.js        场景构建上下文（园区登记建筑、标注、树、车道、路灯）
   kit/              构件：底座与河道、道路与高架、建筑、种树、树/车/路灯
   frame.js geom.js lanes.js rng.js textures.js materials.js
+parks/index.js      园区登记表：首页的落点坐标与目录文字
 parks/sunan/        苏南智城
   index.html        入口页
   park.js           园区配置：页面文字、机位、导览章节、构建顺序

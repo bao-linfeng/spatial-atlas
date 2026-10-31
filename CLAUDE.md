@@ -36,6 +36,8 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 
 每个园区导出一个配置对象（字段说明见 `core/viewer.js` 顶部注释）：`seed`、`meta`（页面文字，`core/ui.js` 按它生成整套 DOM，文字按 HTML 片段插入）、`plate`（沙盘范围，场景米）、`gridAngle`、`stage`（尺度相关参数，覆盖 `core/stage.js` 的默认值）、`views`、`growOrigin`、`chapters`（导览，格式见 `core/tour.js`）和 `build(ctx)`。园区 `index.html` 只保留 `<head>` 并调用 `createViewer(park)`。
 
+新增园区还要在 `parks/index.js` 登记一项（编号、名称、所在区县、`lnglat` 高德坐标、目录摘要），系列首页（根目录 `index.html` + `home/`）据此在常州区县图上落点并生成目录；`district` 须与 `home/changzhou.json` 中的区县名一致，悬停时才能高亮对应区县。这里的名称和指标与 `park.js` 的 `meta` 是两份，改动时同步。
+
 ### 构建流程
 
 `createViewer` → `createContext`（材质、world 分组、登记表）→ `buildPlate`（底座和农田底色）→ `park.build(ctx)` → `finalize`（过滤并生成树、车流、路灯）。

@@ -12,7 +12,7 @@ export function renderUI({ meta: m }) {
     <div id="labels"></div>
 
     <header class="topbar">
-      <a class="brand" href="./" aria-label="园区首页">
+      <a class="brand" href="../../" aria-label="返回空间档案首页">
         <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="m16 3 12 7v13l-12 7-12-7V10Zm0 14 12-7M16 17 4 10m12 7v13" stroke="currentColor" stroke-width="1.5"/></svg>
         <span>空间档案<small>SPATIAL ATLAS</small></span>
       </a>
