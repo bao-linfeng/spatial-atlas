@@ -1,6 +1,10 @@
-# 苏南智城科技产业园 · 三维空间
+# 空间档案 · SPATIAL ATLAS
 
-「空间档案 · SPATIAL ATLAS」系列 02：一个在浏览器里看的苏南智城科技产业园三维动画沙盘。场景包括园区区位、塔楼、中轴、风车式排布的独栋和下沉广场，支持导览动画、夜景切换和视频录制。
+园区三维沙盘系列。`core/` 是系列共用的引擎和页面外壳，`parks/` 下每个目录是一个园区。
+
+## 02 · 苏南智城科技产业园
+
+一个在浏览器里看的苏南智城科技产业园三维动画沙盘。场景包括园区区位、塔楼、中轴、风车式排布的独栋和下沉广场，支持导览动画、夜景切换和视频录制。
 
 > 江苏 · 常州 · 天宁 · 创客路 28 号
 > 青洋高架以东、沪蓉高速以南、北塘河畔
@@ -15,7 +19,7 @@
 node server.mjs          # 默认端口 5191；指定端口：node server.mjs 8080
 ```
 
-启动后访问 <http://127.0.0.1:5191/>。`server.mjs` 只用 Node 内置模块，不需要 `npm install`。
+启动后访问 <http://127.0.0.1:5191/>（系列首页），苏南智城在 <http://127.0.0.1:5191/parks/sunan/>。`server.mjs` 只用 Node 内置模块，不需要 `npm install`。服务需要从仓库根目录启动，因为园区页面要引用 `core/`。
 
 ## 功能
 
@@ -36,16 +40,36 @@ node server.mjs          # 默认端口 5191；指定端口：node server.mjs 80
 ## 目录结构
 
 ```
-index.html        页面结构与 UI（标题卡、工具栏、建模说明）
-style.css         样式
-server.mjs        本地静态服务（Node 内置模块，无依赖）
-src/
-  layout.js       布局数据：红线、路网、高架匝道、河道、周边体量、塔楼与独栋
-  textures.js     程序化贴图：立面、夜景自发光、路面、标识、光伏、水面
-  world.js        根据布局数据生成三维场景（建筑、道路、树、车、路灯）
-  main.js         渲染、相机、交互、导览、夜景、录制
-tools/            开发辅助页面（截图、车辆轨迹检测、底图数字化叠加）
-docs/             参考底图与航拍照片
+index.html          系列首页
+server.mjs          本地静态服务（Node 内置模块，无依赖）
+core/               系列共用
+  viewer.js         组装场景与交互（点选、生长、夜景、白模、视角工具）
+  ui.js atlas.css   按园区 meta 生成的页面外壳与样式
+  stage.js          渲染器、相机、灯光与雾
+  motion.js         补间动画、相机飞行
+  labels.js         标注投影
+  tour.js           导览与 WebM 录制
+  context.js        场景构建上下文（园区登记建筑、标注、树、车道、路灯）
+  kit/              构件：底座与河道、道路与高架、建筑、种树、树/车/路灯
+  frame.js geom.js lanes.js rng.js textures.js materials.js
+parks/sunan/        苏南智城
+  index.html        入口页
+  park.js           园区配置：页面文字、机位、导览章节、构建顺序
+  layout.js         布局数据：红线、路网、高架匝道、河道、周边体量、塔楼与独栋
+  build/            园区专属构建：外部路网、园区内部、周边、种树
+  tools/            底图数字化叠加、林地统计
+  docs/             参考底图与航拍照片
+tools/              截图、车辆轨迹检测、回归检查
+verification/       回归检查基准截图
+```
+
+## 回归检查
+
+借用本机已有的 Playwright（不安装依赖），按固定场景截图并与基准逐像素比对：
+
+```bash
+MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对路径>           # 比对
+MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对路径> --update  # 有意改动画面后重拍基准
 ```
 
 ## 建模依据
