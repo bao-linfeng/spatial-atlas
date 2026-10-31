@@ -15,6 +15,7 @@ const $ = s => document.querySelector(s);
 //   seed        随机数种子
 //   meta        页面文字（见 ui.js），meta.sign 为楼顶 / 门头标识文字
 //   plate       沙盘范围（场景米）{ x0, x1, z0, z1 }
+//   ground      可选，底座参数（见 kit/ground.js 的 buildPlate），如 { holes } 下沉河道开洞
 //   gridAngle   园区建筑默认朝向（弧度）
 //   stage       尺度相关参数，覆盖 stage.js 的默认值
 //   views       { home, top }：{ pos, target } 机位
@@ -32,7 +33,7 @@ export function createViewer(park) {
 
   // ───────── 世界 ─────────
   const ctx = createContext(scene, { plate: park.plate, gridAngle: park.gridAngle, sign: park.meta.sign });
-  buildPlate(ctx);
+  buildPlate(ctx, park.ground);
   park.build(ctx);
   const W = finalize(ctx);
   const { buildings, labels, pickables, trees, cars, lamps } = W;

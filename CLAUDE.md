@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## 项目概述
 
-「空间档案 · SPATIAL ATLAS」园区三维沙盘系列。`core/` 是系列共用的引擎和页面外壳，`parks/<id>/` 是各园区（目前只有 `sunan`，即 02 号苏南智城科技产业园）。纯静态页面，原生 ES Module + three.js（0.169.0，经各园区 `index.html` 中的 importmap 从 registry.npmmirror.com CDN 加载）。没有 package.json、构建步骤或 lint。
+「空间档案 · SPATIAL ATLAS」园区三维沙盘系列。`core/` 是系列共用的引擎和页面外壳，`parks/<id>/` 是各园区（目前有 `sunan` 02 号苏南智城科技产业园、`bigdata` 03 号常州大数据产业园）。纯静态页面，原生 ES Module + three.js（0.169.0，经各园区 `index.html` 中的 importmap 从 registry.npmmirror.com CDN 加载）。没有 package.json、构建步骤或 lint。
 
 ## 运行
 
@@ -47,6 +47,7 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 - `treeSpots` / `lampSpots` / `carPaths`：最终在 `finalize` 里生成实例化网格。
 - `blockers`：种树避让区（道路、河道、建筑矩形）。`elevatedRoad` 的桥墩也会避开已登记的道路，所以登记顺序有影响。
 - `nightables`：夜景时 `emissiveIntensity = t × k`，用 `ctx.night(material, k)` 注册。
+- `park.ground`（可选）传给 `buildPlate`：`holes` 在底座顶面开洞（下沉河道，洞内水面和驳岸由园区自绘），`fields` 为底色色块数。不传时与原先完全一致。
 - 需要单独分组时用 `ctx.addGroup('park')` / `ctx.addGroup('context')`；`placeBuilding` 加入 `ctx.park`，`contextBox` 加入 `ctx.context`。
 
 `core/kit/` 是可复用构件：`ground`（底座、河道、池塘）、`roads`（地面道路、逐点高程的高架 / 匝道）、`buildings`（体量、屋面、塔楼、周边体量）、`scatter`（行道树、散植、片林、树丛）、`instances`（树、车、路灯的 InstancedMesh / Points）。车辆沿车道折线行驶，路口靠 `core/lanes.js` 的 `turnLane` 拼接转向。
@@ -55,7 +56,7 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 
 ### 页面
 
-标注是 DOM 元素，每帧投影到屏幕（`core/labels.js`），不是 three.js 精灵。立面材质由 `facadeMaterial(style, widthM, floors)` 按 `style|开间数|层数` 缓存，并登记到 `facadeMaterials`，夜景和白模统一切换它们。所有动画走 `core/motion.js` 的 tween，由 `tick(dt)` 驱动，`advance(sec, step)` 可手动步进。`window.__park` 暴露 `{ scene, camera, controls, W, fly, runTour, applyNight, advance, toggleNight, select }`。
+标注是 DOM 元素，每帧投影到屏幕（`core/labels.js`），不是 three.js 精灵。立面风格见 `core/textures.js` 的 `STYLES`（`punch` 白墙方窗为大数据园塔楼所加）。立面材质由 `facadeMaterial(style, widthM, floors)` 按 `style|开间数|层数` 缓存，并登记到 `facadeMaterials`，夜景和白模统一切换它们。所有动画走 `core/motion.js` 的 tween，由 `tick(dt)` 驱动，`advance(sec, step)` 可手动步进。`window.__park` 暴露 `{ scene, camera, controls, W, fly, runTour, applyNight, advance, toggleNight, select }`。
 
 ## 苏南：坐标系（最关键）
 
@@ -66,6 +67,14 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 - `build/` 中就地手写的少量坐标（地块绿地、门头、地名位置、中轴范围 `AXIS`）同样用 `P(...)` / `G(...)` 记法。
 - `ELEVATED_RAMPS.tail` 是 `[沿 QINGYANG_AXIS 的里程 s 米, 东偏米]`，`join` 是接入连接线断面的横向偏移米。
 - 道路宽度原本按像素测量，统一为米时取整到 0.1 m（底图精度约半米）；`LOCAL_ROADS` 的宽度里已含当初为显眼起见加的 1.4 倍。
+
+## 大数据产业园：坐标系
+
+- 底图为 `parks/bigdata/docs/area-50m-map.png`（百度 50 m 比例尺矢量图），其像素即 `P` 坐标；0.537 m/像素，原点为底图像素 `(820, 460)`（沙盘中心）。片区路网偏转约 −27.9°（`GRID_ANGLE`，沿玉兰路）。单位规则同苏南：手写位置用底图像素，尺寸写米，`layout.js` 导出一律为场景米。
+- 其余截图（20 m 矢量 / 卫星、大范围矢量 / 卫星、桥头卫星）按 `tools/reg.js` 的仿射参数配准到同一 `P` 坐标，以百度「常州大数据产业园」面的折点拟合，残差约 1–2 m。`tools/crop.html?img=…&x0=&y0=&x1=&y1=&s=&step=[&layout]` 按配准裁切并叠加网格与现有布局。
+- 道路以矢量图为准。百度卫星影像本身与矢量图有局部偏移（西北角约 15 m），河岸、绿地、屋面取自卫星图时要留意；运河宽度和位置按高清卫星图水面取。
+- 运河下沉（`build/water.js` 的 `CANAL_Y`），底座按运河范围开洞；玉新桥桥面与路面齐平。
+- 住宅片区（`RES_ZONES`）在路网和建筑登记之后按行排布并避让，所以 `build` 里 `buildHousing` 必须放在路网、园区、周边之后。
 
 ## 开发辅助
 

@@ -113,6 +113,18 @@ const STYLES = {
       for (let r = 0; r < ROWS * 2; r++) ctx.fillRect(0, r * FLOOR / 2, BAY * COLS, 1);
     }
   },
+  // 白色实墙 + 方形窗洞，每开间两樘（常州大数据产业园塔楼）
+  punch(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#f1f0eb';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS * 2; c++) {
+      const x = c * BAY / 2 + 4, y = r * FLOOR + 8, w = BAY / 2 - 8, h = FLOOR - 15;
+      if (night) { ctx.fillStyle = lit(); ctx.fillRect(x, y, w, h); continue; }
+      ctx.fillStyle = '#c9cbc8'; ctx.fillRect(x - 1, y - 1, w + 2, h + 2);
+      ctx.fillStyle = `hsl(205, 16%, ${30 + rand() * 12}%)`; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(x, y, w, 2);
+    }
+  },
   // 玻璃裙房
   podium(ctx, night) {
     ctx.fillStyle = night ? '#000' : '#3c4a54';

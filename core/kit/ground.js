@@ -1,16 +1,25 @@
 import * as THREE from 'three';
-import { ribbon, flatPoly } from '../geom.js';
+import { ribbon, flatPoly, shapeFrom, pointInPoly, polyIntersect } from '../geom.js';
 
-// 沙盘底座 + 农田 / 绿地底色（色块朝向随园区路网）
-export function buildPlate(ctx, { fields = 70 } = {}) {
+// 沙盘底座 + 农田 / 绿地底色（色块朝向随园区路网）。
+// holes：在底座顶面开洞的多边形（场景米，须完全落在沙盘内），用于下沉河道；洞内的水面、驳岸由园区自行绘制，压到洞口的色块不画
+export function buildPlate(ctx, { fields = 70, holes = [] } = {}) {
   const { world, M, rand, gridAngle } = ctx;
   const { x0: px0, x1: px1, z0: pz0, z1: pz1 } = ctx.plate;
   const pw = px1 - px0, pd = pz1 - pz0;
+  const top = holes.length ? new THREE.MeshBasicMaterial({ visible: false }) : M.plate;
   const plate = new THREE.Mesh(new THREE.BoxGeometry(pw, 8, pd),
-    [M.plateSide, M.plateSide, M.plate, M.plateSide, M.plateSide, M.plateSide]);
+    [M.plateSide, M.plateSide, top, M.plateSide, M.plateSide, M.plateSide]);
   plate.position.set((px0 + px1) / 2, -4, (pz0 + pz1) / 2);
   plate.receiveShadow = true;
   world.add(plate);
+  if (holes.length) {
+    const s = shapeFrom([[px0, pz0], [px1, pz0], [px1, pz1], [px0, pz1]]);
+    for (const h of holes) s.holes.push(shapeFrom(h));
+    const g = new THREE.ShapeGeometry(s); g.rotateX(-Math.PI / 2);
+    world.add(Object.assign(new THREE.Mesh(g, M.plate), { receiveShadow: true }));
+  }
+  const overHole = pts => holes.some(h => polyIntersect([...pts, pts[0]], [...h, h[0]]) || pointInPoly(...h[0], pts) || pts.some(p => pointInPoly(...p, h)));
 
   for (let i = 0; i < fields; i++) {
     const cx = px0 + rand() * pw, cz = pz0 + rand() * pd;
@@ -19,6 +28,7 @@ export function buildPlate(ctx, { fields = 70 } = {}) {
       Math.min(px1, Math.max(px0, cx + x * Math.cos(a) + z * Math.sin(a))),
       Math.min(pz1, Math.max(pz0, cz - x * Math.sin(a) + z * Math.cos(a))),
     ]);
+    if (holes.length && overHole(pts)) continue;
     world.add(flatPoly(pts, 0.02 + i * 0.004, M.field[i % M.field.length]));
   }
 }

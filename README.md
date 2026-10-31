@@ -9,6 +9,12 @@
 > 江苏 · 常州 · 天宁 · 创客路 28 号
 > 青洋高架以东、沪蓉高速以南、北塘河畔
 
+## 03 · 常州大数据产业园
+
+京杭运河南岸、玉龙南路西侧的常州大数据产业园沙盘。范围为玉兰路、玉龙南路、银杏路、董子河西路围合的片区，四周外扩 100–200 m；场景包括五栋白色塔楼、四合院式文创楼与屋顶球场、星港花苑住宅区、白鹤河带状公园和玉新桥。
+
+> 江苏 · 常州 · 钟楼 · 玉龙南路 280 号
+
 ## 运行
 
 项目是纯静态页面，不需要安装依赖，也没有构建步骤。three.js（0.169.0）通过 importmap 从 npmmirror CDN 加载，所以打开页面时需要联网。
@@ -19,7 +25,7 @@
 node server.mjs          # 默认端口 5191；指定端口：node server.mjs 8080
 ```
 
-启动后访问 <http://127.0.0.1:5191/>（系列首页），苏南智城在 <http://127.0.0.1:5191/parks/sunan/>。`server.mjs` 只用 Node 内置模块，不需要 `npm install`。服务需要从仓库根目录启动，因为园区页面要引用 `core/`。
+启动后访问 <http://127.0.0.1:5191/>（系列首页），苏南智城在 <http://127.0.0.1:5191/parks/sunan/>，常州大数据产业园在 <http://127.0.0.1:5191/parks/bigdata/>。`server.mjs` 只用 Node 内置模块，不需要 `npm install`。服务需要从仓库根目录启动，因为园区页面要引用 `core/`。
 
 ## 功能
 
@@ -61,6 +67,7 @@ parks/sunan/        苏南智城
   build/            园区专属构建：外部路网、园区内部、周边、种树
   tools/            底图数字化叠加、林地统计
   docs/             参考底图与航拍照片
+parks/bigdata/      常州大数据产业园（结构同上；build/ 另含运河与玉新桥，tools/reg.js 为各截图的配准参数）
 tools/              截图、车辆轨迹检测、回归检查
 verification/       回归检查基准截图
 ```
@@ -70,11 +77,11 @@ verification/       回归检查基准截图
 借用本机已有的 Playwright（不安装依赖），按固定场景截图并与基准逐像素比对：
 
 ```bash
-MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对路径>           # 比对
+MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对路径>           # 比对（默认 sunan，另一园区加 --park bigdata）
 MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对路径> --update  # 有意改动画面后重拍基准
 ```
 
-## 建模依据
+## 建模依据（02 苏南智城）
 
 - **园区指标**：用地约 13.3 公顷（约 200 亩），总建筑面积约 48 万㎡，容积率 2.5，绿化率 15%。
 - **建筑构成**：38 栋花园独栋（4–6 层），7 栋集中办公（17–25 层），2 栋配套，另有一座下沉式商业广场。
@@ -83,3 +90,11 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 - **其他参考资料**：[前瞻产业园区库](https://y.qianzhan.com/yuanqu/item/443e393d6764b2d3.html)、[简和建筑设计方案](http://gen-design.cn/detail/21)、[常房网](http://www.czfdc.com/sjview.asp?id=2858)、[天宁区政府](https://www.cztn.gov.cn/html/cztn/2019/CNPOLQOF_0619/19762.html)。
 
 本模型是示意性三维重建，不是测绘成果。层数、高度和不可见的立面都是估算。独栋的数量和排布根据资料和底图推算，单体细部由程序生成。
+
+## 建模依据（03 常州大数据产业园）
+
+- **路网**：道路中线取自百度 50 m 比例尺矢量图（玉龙南路含主辅路与绿化隔离带、玉兰路、运河路、银杏路、董子河东 / 西路）。
+- **河岸与绿地**：京杭运河、白鹤河岸线和运河南岸林带取自百度卫星图。矢量图的运河画得偏北、偏窄（约 31 m），按高清卫星图取约 44 m。
+- **建筑**：位置按卫星图屋面回推，体量与立面参照视觉中国航拍（VCG211452883135 / 883221 / 883400 / 883496 / 883574）。红线以西三栋白塔不在园区面内，作为可点选的周边建筑。
+- **玉新桥**：参照[老百晓集桥](http://www.china-qiao.com/ql16/czql/czql012.htm)的 2012 年照片和图册数据（长 60.78 m、宽 40.6 m、三跨）。为了露出桥墩，运河水面下沉了约 4 m。
+- 住宅楼栋按片区程序化排布，不是逐栋描摹。楼名 A–J 是本模型的编号。

@@ -147,9 +147,11 @@ function renderMap(animate) {
   }
 
   // 园区标记：编号圆点 + 折线引线 + 名牌。名牌抬到右上方，避开所在区县的区名；
-  // 超出画面时改朝左上；窄屏只留编号圆点，靠下方目录的同号条目对照
+  // 超出画面或压住已放好的名牌时改朝左上；窄屏只留编号圆点，靠下方目录的同号条目对照
   const narrow = w < 700;
   const pins = el('g', {}, world);
+  const plates = [];
+  const overlaps = (a, b) => a.x < b.x + b.w && b.x < a.x + a.w && a.y < b.y + b.h && b.y < a.y + a.h;
   parks.forEach((park, i) => {
     const [x, y] = project(park.lnglat);
     const a = el('a', { class: 'pin', href: href(park), 'data-id': park.id, 'aria-label': `${park.no} ${park.name}，进入沙盘` }, pins);
@@ -167,12 +169,17 @@ function renderMap(animate) {
         for (const t of [label, en]) { t.setAttribute('x', lx + dir * 12); t.setAttribute('text-anchor', anchor); }
         leader.setAttribute('points', `${x + dir * 8},${y - 8} ${x + dir * 34},${ly} ${lx},${ly}`);
       };
+      const box = () => {
+        const b1 = label.getBBox(), b2 = en.getBBox();
+        const x = Math.min(b1.x, b2.x) - 12;
+        return { x, w: Math.max(b1.x + b1.width, b2.x + b2.width) + 12 - x, y: b1.y - 9, h: b2.y + b2.height - b1.y + 18 };
+      };
       side(1);
-      let b1 = label.getBBox(), b2 = en.getBBox();
-      if (Math.max(b1.x + b1.width, b2.x + b2.width) + 12 > w - 8) { side(-1); b1 = label.getBBox(); b2 = en.getBBox(); }
-      const bx = Math.min(b1.x, b2.x) - 12, bw = Math.max(b1.x + b1.width, b2.x + b2.width) + 12 - bx;
-      plate.setAttribute('x', bx); plate.setAttribute('width', bw);
-      plate.setAttribute('y', b1.y - 9); plate.setAttribute('height', b2.y + b2.height - b1.y + 18);
+      let b = box();
+      if (b.x + b.w > w - 8 || plates.some(p => overlaps(p, b))) { side(-1); b = box(); }
+      plates.push(b);
+      plate.setAttribute('x', b.x); plate.setAttribute('width', b.w);
+      plate.setAttribute('y', b.y); plate.setAttribute('height', b.h);
     }
     el('circle', { class: 'pin-ring', cx: x, cy: y, r: 11 }, a);
     el('circle', { class: 'pin-dot', cx: x, cy: y, r: 11 }, a);
