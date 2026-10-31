@@ -57,13 +57,13 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 
 ## 苏南：坐标系（最关键）
 
-- 坐标先按**百度底图截图像素**记录，再由 `P(px, py)` 换算为场景米（x 向东，z 向南；`PX = 0.48` m/像素，原点为底图像素 `(1000, 560)`）。`P` / `G` / `GRID_ANGLE` 由 `parks/sunan/layout.js` 顶部的 `createFrame()` 生成。
-- 园区内部路网偏转约 12.7°（`GRID_ANGLE`）。园区内对象用网格坐标 `G(u, v)`：u 沿东西主路，v 沿中轴向南，单位同为像素。`TOWERS` 中的 `at: [u, v]` 是网格坐标，`px: [x, y]` 是底图像素。
-- 新增或修改道路、建筑时，**位置**沿用原有记法（P 像素或 G 网格），不要直接写米。各字段单位并不统一，改之前先看同类条目和 `build/` 中的用法：
-  - `PARK_ROADS` / `NORTH_ROADS` / `LOCAL_ROADS` 的 `w` 是像素宽度，构建时乘以 `PX`（`LOCAL_ROADS` 还会再乘 1.4）。
-  - 建筑的 `w` / `d` / `h`、`podium`、`FRONTAGE`、`DECK_START` / `LANDING` 是米，`f` 是层数。
-  - `RIVER`、`PONDS`、`QINGYANG_AXIS` 等常量在 layout.js 中已经 `.map(p => P(...p))` 转成米；`NORTH_ROADS`、`LOCAL_ROADS`、`CONTEXT_BLOCKS`、`ELEVATED_RAMPS.pts` 保留原始像素，在 `build/` 中换算。
-  - `ELEVATED_RAMPS.tail` 是 `[沿 QINGYANG_AXIS 的 s 米, 东偏米]`，`join` 是接入连接线断面的横向偏移米。
+- 底图像素由 `P(x, y)` 换算为场景米（x 向东，z 向南；0.48 m/像素，原点为底图像素 `(1000, 560)`）。园区内部路网偏转约 12.7°（`GRID_ANGLE`），园区内对象用网格坐标 `G(u, v)`：u 沿东西主路，v 沿中轴向南，单位同为像素。`P` / `G` / `GRID_ANGLE` 由 `layout.js` 顶部的 `createFrame()` 生成。
+- **单位规则**（两条，无例外）：
+  1. 手写坐标：**位置**用底图记法（字段 `px` 为底图像素，`grid` 为网格坐标；折线 `pts` 的记法见各常量注释），方便和数字化工具对照；**尺寸一律写米**（宽 `w`、深 `d`、高 `h`、半径、偏移、里程），`f` 为层数。
+  2. `layout.js` 的导出一律已换算为场景米：位置字段统一为 `pos`，像素矩形 `r` 导出为 `rect`。`build/` 直接使用，**不要再对 layout 数据调用 P / G 或乘 `PX`**。
+- `build/` 中就地手写的少量坐标（地块绿地、门头、地名位置、中轴范围 `AXIS`）同样用 `P(...)` / `G(...)` 记法。
+- `ELEVATED_RAMPS.tail` 是 `[沿 QINGYANG_AXIS 的里程 s 米, 东偏米]`，`join` 是接入连接线断面的横向偏移米。
+- 道路宽度原本按像素测量，统一为米时取整到 0.1 m（底图精度约半米）；`LOCAL_ROADS` 的宽度里已含当初为显眼起见加的 1.4 倍。
 
 ## 开发辅助
 
@@ -74,4 +74,6 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 
 ## 资料来源约定
 
-布局以百度 / 高德地图和用户提供的航拍照片为准（照片放在 `parks/<id>/docs/`）。层数、高度和不可见面属于估算。改动布局或数据时，同步更新代码注释里的依据，以及 `park.js` 中 `meta.notes` / `meta.sources`。栋数出现在 `park.js` 的 `meta.stats`（47 栋 / 38 栋独栋）、`meta.notes`、导览章节文字和 README 中。`VILLAS` 的数量由 `rows` × `villaCols` 推导，并扣除会所占位，所以改行列参数会改变栋数。
+每个园区的资源独立存放在自己目录下：参考底图与航拍照片在 `parks/<id>/docs/`，数字化用的卫星截图等在 `parks/<id>/.research/`，只服务于该园区的工具在 `parks/<id>/tools/`。`core/` 和根目录 `tools/` 不放任何园区的资源。
+
+布局以百度 / 高德地图和用户提供的航拍照片为准。层数、高度和不可见面属于估算。改动布局或数据时，同步更新代码注释里的依据，以及 `park.js` 中 `meta.notes` / `meta.sources`。栋数出现在 `park.js` 的 `meta.stats`（47 栋 / 38 栋独栋）、`meta.notes`、导览章节文字和 README 中。`VILLAS` 的数量由 `rows` × `villaCols` 推导，并扣除会所占位，所以改行列参数会改变栋数。
