@@ -31,7 +31,7 @@ page.on('pageerror', e => errors.push(e.message));
 page.on('console', m => m.type() === 'error' && errors.push(m.text()));
 page.on('requestfailed', r => errors.push(`请求失败 ${r.url()}`));
 
-// 场景中仍有直接调用 Math.random 的地方（树、车），这里换成固定种子，保证每次加载结果相同
+// 场景随机数已全部走 src/rng.js；这里再固定 Math.random（three.js 生成 uuid 会用到），防止以后有代码误用它而不自知
 await page.addInitScript(() => {
   let a = 20261031;
   Math.random = () => { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };

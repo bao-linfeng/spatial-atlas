@@ -1,20 +1,13 @@
 import * as THREE from 'three';
+import { rng } from './rng.js';
 
 // 立面贴图：每张贴图 = 8 开间 × 8 层，按建筑尺寸重复。
 // 同时生成一张夜景自发光贴图（随机亮灯）。
 const BAY = 32, FLOOR = 32, COLS = 8, ROWS = 8;
 export const BAY_M = 3.6, FLOOR_M = 4.2;
 
-const rand = mulberry32(20260724);
-function mulberry32(a) {
-  return () => {
-    a |= 0; a = a + 0x6D2B79F5 | 0;
-    let t = Math.imul(a ^ a >>> 15, 1 | a);
-    t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
-    return ((t ^ t >>> 14) >>> 0) / 4294967296;
-  };
-}
-export { rand };
+const rand = () => rng.facade();      // 立面
+const noise = () => rng.texture();    // 路面、水面
 
 function makeCanvas(w = BAY * COLS, h = FLOOR * ROWS) {
   const c = document.createElement('canvas');
@@ -180,8 +173,8 @@ export function roadTexture(kind) {
   const asphalt = { park: '#9a9e9f', highway: '#6a6f72', elevated: '#5b6064', local: '#8a8e90' }[kind] || '#767b7e';
   ctx.fillStyle = asphalt; ctx.fillRect(0, 0, 128, 128);
   for (let i = 0; i < 500; i++) {
-    ctx.fillStyle = `rgba(${rand() < 0.5 ? '255,255,255' : '0,0,0'},${rand() * 0.05})`;
-    ctx.fillRect(rand() * 128, rand() * 128, 2, 2);
+    ctx.fillStyle = `rgba(${noise() < 0.5 ? '255,255,255' : '0,0,0'},${noise() * 0.05})`;
+    ctx.fillRect(noise() * 128, noise() * 128, 2, 2);
   }
   ctx.fillStyle = 'rgba(245,245,240,.85)';
   if (kind === 'elevated') {
@@ -238,10 +231,10 @@ export function waterTexture() {
   g.addColorStop(0, '#8fa9a6'); g.addColorStop(1, '#7c9895');
   ctx.fillStyle = g; ctx.fillRect(0, 0, 256, 256);
   for (let i = 0; i < 260; i++) {
-    ctx.strokeStyle = `rgba(255,255,255,${0.04 + rand() * 0.08})`;
+    ctx.strokeStyle = `rgba(255,255,255,${0.04 + noise() * 0.08})`;
     ctx.lineWidth = 1;
-    const x = rand() * 256, y = rand() * 256, l = 8 + rand() * 30;
-    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + l, y + rand() * 2); ctx.stroke();
+    const x = noise() * 256, y = noise() * 256, l = 8 + noise() * 30;
+    ctx.beginPath(); ctx.moveTo(x, y); ctx.lineTo(x + l, y + noise() * 2); ctx.stroke();
   }
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;

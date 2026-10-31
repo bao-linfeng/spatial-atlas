@@ -1,13 +1,13 @@
 {
-  "status": "场景就绪 · 52 个建筑体量 · 3145 棵树 · 177 辆车",
+  "status": "场景就绪 · 52 个建筑体量 · 3070 棵树 · 177 辆车",
   "buildings": 52,
   "labels": 27,
   "pickables": 94,
-  "trees": 3145,
+  "trees": 3070,
   "cars": 177,
-  "meshes": 1087,
-  "instances": 7727,
-  "vertices": 912079,
+  "meshes": 1085,
+  "instances": 7575,
+  "vertices": 891481,
   "carJumps": {},
   "errors": []
 }

@@ -5,8 +5,11 @@ import {
   RIVER, RIVER_BRANCHES, PARK_ROADS, NORTH_ROADS, AXIS, SOUTH_GATE, TOWERS, PLAZA, CLUB, VILLAS,
 } from './layout.js';
 import {
-  facadeMaterial, roadTexture, signTexture, solarTexture, waterTexture, rand, FLOOR_M,
+  facadeMaterial, roadTexture, signTexture, solarTexture, waterTexture, FLOOR_M,
 } from './textures.js';
+import { rng } from './rng.js';
+
+const rand = () => rng.world();
 
 // ───────────────────────── 工具 ─────────────────────────
 const V3 = (x, y, z) => new THREE.Vector3(x, y, z);
@@ -911,13 +914,13 @@ function buildTrees(spots) {
   spots.forEach((t, i) => {
     const sc = t.s * (t.kind === 1 ? 2.1 : 2.9);
     const h = sc * (t.kind === 1 ? 1.5 : 1.3);
-    data.push({ x: t.p[0], z: t.p[1], sc, h, delay: Math.random() });
+    data.push({ x: t.p[0], z: t.p[1], sc, h, delay: rng.trees() });
     p.set(t.p[0], h + sc * 0.6, t.p[1]); s.set(sc, sc * (t.kind === 1 ? 1.15 : 0.95), sc);
-    q.setFromEuler(new THREE.Euler(0, Math.random() * 6, 0));
+    q.setFromEuler(new THREE.Euler(0, rng.trees() * 6, 0));
     m.compose(p, q, s); canopy.setMatrixAt(i, m);
     p.set(t.p[0], 0, t.p[1]); s.set(1, h + sc * 0.3, 1); m.compose(p, q, s); trunk.setMatrixAt(i, m);
-    const hue = t.kind === 1 ? 0.25 + Math.random() * 0.06 : 0.23 + Math.random() * 0.08;
-    col.setHSL(hue, 0.36 + Math.random() * 0.16, 0.2 + Math.random() * 0.08);
+    const hue = t.kind === 1 ? 0.25 + rng.trees() * 0.06 : 0.23 + rng.trees() * 0.08;
+    col.setHSL(hue, 0.36 + rng.trees() * 0.16, 0.2 + rng.trees() * 0.08);
     canopy.setColorAt(i, col);
   });
   group.add(canopy, trunk);
@@ -947,7 +950,7 @@ function buildCars(paths) {
     const L = cum[cum.length - 1];
     if (L < 20) return;
     for (let k = 0; k < path.count; k++) {
-      lanes.push({ pts, cum, L, y: path.y, ys: path.ys, dir: path.dir, offset: path.offset || 0, speed: path.speed * (0.85 + Math.random() * 0.3), s: Math.random() * L });
+      lanes.push({ pts, cum, L, y: path.y, ys: path.ys, dir: path.dir, offset: path.offset || 0, speed: path.speed * (0.85 + rng.cars() * 0.3), s: rng.cars() * L });
     }
   });
   const n = lanes.length;
@@ -960,7 +963,7 @@ function buildCars(paths) {
   body.castShadow = true;
   const palette = [0xf4f4f2, 0xe9e9e6, 0x2b2f33, 0x8d949a, 0xb33a35, 0x3d5a80, 0xd8d2c4, 0x56636d];
   const c = new THREE.Color();
-  lanes.forEach((l, i) => body.setColorAt(i, c.set(palette[Math.floor(Math.random() * palette.length)])));
+  lanes.forEach((l, i) => body.setColorAt(i, c.set(palette[Math.floor(rng.cars() * palette.length)])));
   // 车灯光点（夜景）
   const lightGeo = new THREE.BufferGeometry();
   const lightPos = new Float32Array(n * 2 * 3), lightCol = new Float32Array(n * 2 * 3);
