@@ -1,4 +1,4 @@
-import { FORESTS, P, BOUNDARY } from '../src/layout.js';
+import { FORESTS, P, BOUNDARY } from '../layout.js';
 function pointInPoly(x, z, poly) {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {

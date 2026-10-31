@@ -3,116 +3,25 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <meta name="description" content="苏南智城科技产业园三维动画沙盘：区位、塔楼、中轴、风车式独栋与下沉广场导览，支持夜景与视频录制。">
-  <title>苏南智城科技产业园 · 三维空间</title>
+  <title>空间档案 · SPATIAL ATLAS</title>
   <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Crect width='40' height='40' rx='10' fill='%231d5149'/%3E%3Cpath d='M10 28V16l10-6 10 6v12l-10 6zM10 16l10 6 10-6M20 22v12' fill='none' stroke='%23e9f0d5' stroke-width='2'/%3E%3C/svg%3E">
-  <link rel="stylesheet" href="./style.css">
-  <script type="importmap">
-  {
-    "imports": {
-      "three": "https://registry.npmmirror.com/three/0.169.0/files/build/three.module.js",
-      "three/addons/": "https://registry.npmmirror.com/three/0.169.0/files/examples/jsm/"
-    }
-  }
-  </script>
+  <style>
+    body { margin: 0; min-height: 100vh; display: grid; place-content: center; background: #e9ece4; color: #1d3a34; font-family: "Songti SC", "STSong", "SimSun", serif; }
+    h1 { font-weight: 400; letter-spacing: .2em; margin: 0 0 6px; }
+    small { letter-spacing: .3em; color: #6b7d72; font-family: system-ui, sans-serif; font-size: 11px; }
+    ul { list-style: none; padding: 0; margin: 36px 0 0; }
+    li a { display: flex; gap: 18px; align-items: baseline; padding: 14px 0; border-top: 1px solid #c9d0c2; color: inherit; text-decoration: none; font-size: 20px; }
+    li a:hover { color: #1f8a68; }
+    li b { font: 500 13px system-ui, sans-serif; color: #6b7d72; }
+  </style>
 </head>
 <body>
-  <div class="sky sky-day"></div><div class="sky sky-night"></div>
-  <main id="viewer" aria-label="可交互三维园区">
-    <div id="canvas-host"></div>
-    <div id="labels"></div>
-
-    <header class="topbar">
-      <a class="brand" href="./" aria-label="园区首页">
-        <svg viewBox="0 0 32 32" fill="none" aria-hidden="true"><path d="m16 3 12 7v13l-12 7-12-7V10Zm0 14 12-7M16 17 4 10m12 7v13" stroke="currentColor" stroke-width="1.5"/></svg>
-        <span>空间档案<small>SPATIAL ATLAS</small></span>
-      </a>
-      <div class="project-name">苏南智城科技产业园<span>SUNAN SMART CITY SCIENCE &amp; TECHNOLOGY PARK</span></div>
-      <button id="sources-button" class="top-link">建模说明 <span>↗</span></button>
-    </header>
-
-    <aside class="intro panel">
-      <p class="eyebrow"><i></i> 江苏 · 常州 · 天宁</p>
-      <h1>三面环路，<br>一轴生长<span>。</span></h1>
-      <p class="intro-copy">青洋高架之东、沪蓉高速之南、北塘河之畔。<br>拖动场景，或播放导览动画。</p>
-      <div class="project-meta">
-        <div><strong>47<small>栋</small></strong><span>建筑（含 38 栋独栋）</span></div>
-        <div><strong>13.3<small>ha</small></strong><span>用地 · 约 200 亩</span></div>
-        <div><strong>48<small>万㎡</small></strong><span>总建筑面积</span></div>
-      </div>
-      <div class="accuracy">
-        <span>地图定位 · 航拍校核</span>
-        <p>路网与轮廓取自百度 / 高德地图，体量与立面按 2026 年航拍照片重绘；层数、高度与不可见面为估算。</p>
-      </div>
-      <a class="reference-card" href="https://www.vcg.com/creative/1673826950" target="_blank" rel="noopener">
-        <span class="ref-thumb" aria-hidden="true"><svg viewBox="0 0 40 40"><path d="M4 32h32M8 32V14h6v18M16 32V8h8v24M26 32V18h6v14" fill="none" stroke="currentColor" stroke-width="1.6"/></svg></span>
-        <span>对照实景航拍<small>视觉中国 · 2026-07 ↗</small></span>
-      </a>
-    </aside>
-
-    <div class="scene-status"><span class="status-dot"></span><span id="status" role="status">正在构建三维场景…</span></div>
-
-    <aside class="selection panel" id="selection" hidden>
-      <button id="close-selection" class="close" aria-label="关闭建筑详情">×</button>
-      <p class="eyebrow">BUILDING <span id="building-id">A</span></p>
-      <h2 id="building-name"></h2>
-      <p id="building-info"></p>
-      <div id="building-stats" class="stats"></div>
-      <button id="focus-button">靠近这栋建筑 <span>↗</span></button>
-    </aside>
-
-    <section id="tour-card" class="tour-card" aria-live="polite">
-      <div class="tour-head"><em id="tour-index">01</em><span id="tour-en">LOCATION</span></div>
-      <h3 id="tour-title">区位</h3>
-      <p id="tour-text"></p>
-      <div id="tour-dots" class="tour-dots"></div>
-    </section>
-
-    <nav class="view-tools" aria-label="视角工具">
-      <button id="home" title="复位视角" aria-label="复位视角">⌂</button>
-      <button id="top" title="俯视布局" aria-label="俯视布局">⊞</button>
-      <hr>
-      <button id="zoom-in" title="放大" aria-label="放大">+</button>
-      <button id="zoom-out" title="缩小" aria-label="缩小">−</button>
-    </nav>
-
-    <nav class="toolbar panel" aria-label="场景工具">
-      <button id="btn-tour" class="primary"><span class="ico">▶</span>导览动画</button>
-      <button id="btn-grow"><span class="ico">↑</span>生长</button>
-      <i class="sep"></i>
-      <button id="btn-orbit"><span class="ico">↻</span>环绕</button>
-      <button id="btn-night"><span class="ico">☾</span>夜景</button>
-      <button id="btn-labels"><span class="ico">◎</span>标注</button>
-      <button id="btn-white"><span class="ico">□</span>白模</button>
-      <i class="sep"></i>
-      <button id="btn-record" title="播放导览并导出 WebM 视频"><span class="ico rec"></span>录制</button>
-    </nav>
-
-    <p class="hint">左键旋转 · 右键平移 · 滚轮缩放 · 点击建筑查看</p>
-    <p class="foot">MAP-REFERENCED MODEL <b>02 / 2026</b></p>
-  </main>
-
-  <dialog id="sources" class="sources">
-    <button id="sources-close" class="close" aria-label="关闭">×</button>
-    <p class="eyebrow">MODELING NOTES</p>
-    <h2>建模说明</h2>
-    <dl>
-      <dt>地址</dt><dd>常州市天宁区青龙街道创客路28号</dd>
-      <dt>四至</dt><dd>西至青洋北路（高架），北至沪蓉高速，东、南至北塘河 / 创客路</dd>
-      <dt>指标</dt><dd>用地约 13.3 公顷 · 总建筑面积约 48 万㎡ · 容积率 2.5 · 绿化率 15%</dd>
-      <dt>构成</dt><dd>38 栋花园独栋（4–6 层）· 7 栋集中办公（17–25 层）· 2 栋配套 · 下沉式商业广场</dd>
-      <dt>布局</dt><dd>南侧入口，南北中轴“一轴多节点”；独栋四合院母题、风车式排布；北端双塔与下沉庭院</dd>
-    </dl>
-    <h4>依据</h4>
+  <main>
+    <h1>空间档案</h1>
+    <small>SPATIAL ATLAS</small>
     <ul>
-      <li>百度地图 / 高德卫星图：园区红线、内部路网、建筑轮廓与相对位置</li>
-      <li>百度 50m 比例尺矢量图 + 卫星图：周边路网逐段数字化（青洋路高架及两条匝道、青洋北路、河海东路、创客路、虹阳路、沪蓉高速连接线），周边厂区 / 管理处 / 网球俱乐部体量与片林范围</li>
-      <li>视觉中国 2026-07-24 航拍（VCG211673826950 / 1656866554 / 1656874856）：塔楼位置、立面色系、独栋形态</li>
-      <li><a href="https://y.qianzhan.com/yuanqu/item/443e393d6764b2d3.html" target="_blank" rel="noopener">前瞻产业园区库</a> · <a href="http://gen-design.cn/detail/21" target="_blank" rel="noopener">简和建筑设计方案</a> · <a href="http://www.czfdc.com/sjview.asp?id=2858" target="_blank" rel="noopener">常房网</a> · <a href="https://www.cztn.gov.cn/html/cztn/2019/CNPOLQOF_0619/19762.html" target="_blank" rel="noopener">天宁区政府</a></li>
+      <li><a href="./parks/sunan/"><b>02</b>苏南智城科技产业园</a></li>
     </ul>
-    <p class="muted">本模型为示意性三维重建，非测绘成果。独栋数量与排布按资料与底图推算，单体细部为程序化生成。</p>
-  </dialog>
-
-  <script type="module" src="./src/main.js"></script>
+  </main>
 </body>
 </html>

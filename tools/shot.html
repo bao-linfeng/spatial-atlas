@@ -1,10 +1,11 @@
 <!doctype html>
-<!-- 开发辅助：无头截图，?cam=x,y,z&tgt=x,y,z -->
+<!-- 开发辅助：无头截图，?park=sunan&cam=x,y,z&tgt=x,y,z -->
 <meta charset="utf-8">
 <style>html,body{margin:0;overflow:hidden}iframe{border:0;width:100vw;height:100vh}</style>
-<iframe id="f" src="../index.html"></iframe>
+<iframe id="f"></iframe>
 <script>
 const q = new URLSearchParams(location.search);
+document.getElementById('f').src = `../parks/${q.get('park') || 'sunan'}/`;
 const cam = q.get('cam').split(',').map(Number), tgt = q.get('tgt').split(',').map(Number);
 const iv = setInterval(async () => {
   const w = document.getElementById('f').contentWindow, p = w.__park;

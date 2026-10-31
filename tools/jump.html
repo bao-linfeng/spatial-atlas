@@ -1,9 +1,10 @@
 <!doctype html>
-<!-- 开发辅助：检测车辆在沙盘内部的瞬移（消失点），结果写入 #out -->
+<!-- 开发辅助：检测车辆在沙盘内部的瞬移（消失点），结果写入 #out。?park=sunan -->
 <meta charset="utf-8">
-<iframe id="f" src="../index.html" style="width:800px;height:500px;border:0"></iframe>
+<iframe id="f" style="width:800px;height:500px;border:0"></iframe>
 <pre id="out">running</pre>
 <script>
+document.getElementById('f').src = `../parks/${new URLSearchParams(location.search).get('park') || 'sunan'}/`;
 const iv = setInterval(() => {
   const w = document.getElementById('f').contentWindow, p = w.__park;
   if (!p) return;

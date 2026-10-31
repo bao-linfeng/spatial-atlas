@@ -34,7 +34,7 @@ createServer(async (req, res) => {
     send(res, 404, 'Not Found');
     console.log(`404 ${req.method} ${url.pathname}`);
   }
-}).listen(PORT, HOST, () => console.log(`空间档案 · 苏南智城 → http://${HOST}:${PORT}/`));
+}).listen(PORT, HOST, () => console.log(`空间档案 SPATIAL ATLAS → http://${HOST}:${PORT}/`));
 
 function send(res, code, text) {
   res.writeHead(code, { 'Content-Type': 'text/plain; charset=utf-8' });

@@ -199,8 +199,8 @@ export function roadTexture(kind) {
   return t;
 }
 
-// 楼顶标识「苏南智城」
-export function signTexture(text = '苏南智城') {
+// 楼顶 / 门头标识文字
+export function signTexture(text) {
   const [c, ctx] = makeCanvas(512, 128);
   ctx.clearRect(0, 0, 512, 128);
   ctx.fillStyle = '#d0312d';
@@ -240,4 +240,17 @@ export function waterTexture() {
   t.colorSpace = THREE.SRGBColorSpace;
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   return t;
+}
+
+// 光点（路灯、车灯）
+let glow;
+export function glowTexture() {
+  if (glow) return glow;
+  const c = document.createElement('canvas'); c.width = c.height = 64;
+  const ctx = c.getContext('2d');
+  const g = ctx.createRadialGradient(32, 32, 0, 32, 32, 32);
+  g.addColorStop(0, 'rgba(255,255,255,1)'); g.addColorStop(0.25, 'rgba(255,240,210,.8)'); g.addColorStop(1, 'rgba(255,220,170,0)');
+  ctx.fillStyle = g; ctx.fillRect(0, 0, 64, 64);
+  glow = new THREE.CanvasTexture(c);
+  return glow;
 }
