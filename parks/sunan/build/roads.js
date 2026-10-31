@@ -5,7 +5,7 @@ import {
 import { laneOf, revLane, turnLane } from '../../../core/lanes.js';
 import { groundRoad, elevatedRoad } from '../../../core/kit/roads.js';
 import {
-  P, PX, PLATE, QINGYANG_AXIS, DECK_START, LANDING, FRONTAGE, HIGHWAY, HEHAI_ROAD, CHUANGKE_ROAD, HONGYANG_ROAD,
+  P, PLATE, QINGYANG_AXIS, DECK_START, LANDING, FRONTAGE, HIGHWAY, HEHAI_ROAD, CHUANGKE_ROAD, HONGYANG_ROAD,
   LOCAL_ROADS, ELEVATED_RAMPS, TOLL, G42_MAIN, G42_RAMP,
 } from '../layout.js';
 
@@ -112,7 +112,7 @@ export function buildRoads(ctx, { branches }) {
   // 周边支路
   for (const r of LOCAL_ROADS) {
     const pts = smooth(r.pts, 6);
-    groundRoad(ctx, pts, r.w * PX * 1.4, { mat: roadMats.local, walk: 1.5, lanes: [[0, rand() < 0.5 ? 1 : -1]], speed: 6, count: 1, offset: 1.6 });
+    groundRoad(ctx, pts, r.w, { mat: roadMats.local, walk: 1.5, lanes: [[0, rand() < 0.5 ? 1 : -1]], speed: 6, count: 1, offset: 1.6 });
   }
 
   // 跨河桥栏杆

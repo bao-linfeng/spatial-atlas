@@ -27,7 +27,7 @@ export function buildCampus(ctx) {
   // 内部道路
   for (const r of PARK_ROADS) {
     const pts = densify(r.pts, 8);
-    const w = r.w * PX;
+    const w = r.w;
     park.add(Object.assign(new THREE.Mesh(ribbon(pts, w, 0.75, 18), roadMats.park), { receiveShadow: true }));
     ctx.blockRoad(pts, w);
     ctx.carPaths.push({ pts, y: 0.8, dir: rand() < 0.5 ? 1 : -1, speed: 5, count: 2, offset: 1.6 });
@@ -35,7 +35,7 @@ export function buildCampus(ctx) {
   }
   for (const r of NORTH_ROADS) {
     const pts = smooth(r.pts, 6);
-    const w = r.w * PX;
+    const w = r.w;
     park.add(Object.assign(new THREE.Mesh(ribbon(pts, w, 0.74, 18), roadMats.park), { receiveShadow: true }));
     ctx.blockRoad(pts, w);
     for (let s = 0; s < pts.length; s += 5) ctx.lampSpots.push(V3(...insertY(offsetLine(pts, w / 2 + 1.5)[s], 4.5)));
