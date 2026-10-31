@@ -1,0 +1,151 @@
+@charset "UTF-8";
+:root {
+  font-family: "Microsoft YaHei UI", "PingFang SC", sans-serif;
+  color: #263e38;
+  background: #e7eae2;
+  font-synthesis: none;
+  --green: #20574b;
+  --line: rgba(37, 66, 56, .13);
+  --panel: rgba(250, 251, 246, .88);
+  --night: 0;
+}
+* { box-sizing: border-box; }
+body { margin: 0; overflow: hidden; }
+button, a { -webkit-tap-highlight-color: transparent; }
+button { font: inherit; color: inherit; border: 0; cursor: pointer; background: none; }
+button:focus-visible, a:focus-visible { outline: 3px solid #b58c44; outline-offset: 4px; }
+button:hover { color: #126d58; }
+a { color: inherit; }
+
+.sky { position: fixed; inset: 0; pointer-events: none; }
+.sky-day { background: radial-gradient(120% 90% at 60% 45%, #f4f5ef 0%, #e7eae2 55%, #dde2d7 100%); }
+.sky-night { background: radial-gradient(120% 90% at 60% 40%, #1f2b38 0%, #121a22 60%, #0b1016 100%); opacity: var(--night); }
+
+#viewer { height: 100dvh; min-height: 620px; position: relative; overflow: hidden; }
+#canvas-host, #labels { position: absolute; inset: 0; }
+canvas { display: block; touch-action: none; }
+#labels { pointer-events: none; overflow: hidden; }
+
+/* 顶栏 */
+.topbar { position: absolute; top: 0; left: 0; right: 0; height: 100px; padding: 0 44px; display: flex; align-items: center; justify-content: space-between; background: linear-gradient(#f0f2ebed, #f0f2eb00); z-index: 3; transition: background .6s; }
+.is-night .topbar { background: linear-gradient(#121a22e6, #121a2200); color: #e6ece4; }
+.brand { display: flex; align-items: center; gap: 13px; text-decoration: none; font-size: 17px; font-weight: 600; letter-spacing: 2px; }
+.brand svg { width: 37px; height: 37px; }
+.brand small { display: block; font-size: 8px; letter-spacing: 2px; margin-top: 5px; }
+.project-name { font-size: 15px; letter-spacing: 2px; line-height: 1.8; text-align: center; }
+.project-name span { display: block; font-size: 8px; letter-spacing: 1.5px; color: #77857a; }
+.top-link { font-size: 12px; }
+.top-link span { margin-left: 15px; }
+.is-night .top-link, .is-night .view-tools button { color: #e6ece4; }
+
+/* 面板 */
+.panel { background: var(--panel); border: 1px solid rgba(255, 255, 255, .8); box-shadow: 0 14px 45px #3b534010; backdrop-filter: blur(18px); }
+.intro { position: absolute; top: 124px; left: 36px; width: 290px; padding: 25px; border-radius: 5px; z-index: 2; transition: opacity .6s, transform .6s; }
+.touring .intro { opacity: 0; transform: translateX(-20px); pointer-events: none; }
+.eyebrow { font-size: 10px; letter-spacing: 2px; font-weight: 500; color: #668174; margin: 0 0 20px; }
+.eyebrow i, .status-dot { display: inline-block; width: 6px; height: 6px; border-radius: 50%; background: #3e8d72; margin-right: 8px; }
+h1 { font-family: "Songti SC", "STSong", "SimSun", serif; font-weight: 400; font-size: 32px; line-height: 1.5; letter-spacing: 1px; margin: 0 0 14px; }
+h1 span { color: #739577; }
+.intro-copy { font-size: 11px; line-height: 2.1; color: #7b877d; margin: 0 0 23px; }
+.project-meta { display: flex; padding: 19px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); gap: 22px; }
+.project-meta strong { font-family: Georgia, serif; font-size: 27px; letter-spacing: -1px; font-weight: 400; display: block; white-space: nowrap; }
+.project-meta strong small { font-family: inherit; font-size: 10px; letter-spacing: 0; margin-left: 4px; }
+.project-meta div > span { font-size: 9px; color: #869184; display: block; margin-top: 8px; }
+.accuracy { margin-top: 21px; }
+.accuracy > span { display: inline-block; font-size: 10px; letter-spacing: 1px; padding: 5px 9px; background: #e3ead9; color: #3f6b55; border-radius: 3px; }
+.accuracy p { font-size: 10px; line-height: 1.9; color: #7d877f; margin: 11px 0 0; }
+.reference-card { margin-top: 20px; display: flex; align-items: center; gap: 14px; text-decoration: none; font-size: 13px; }
+.reference-card small { display: block; font-size: 9px; color: #869184; margin-top: 5px; }
+.ref-thumb { width: 64px; height: 50px; border-radius: 3px; display: grid; place-items: center; color: #3f6b55; background: linear-gradient(160deg, #cfe0ec, #e9efe0 60%, #b9c9a3); }
+.ref-thumb svg { width: 34px; height: 34px; }
+.reference-card:hover { color: #126d58; }
+
+.scene-status { position: absolute; top: 112px; right: 44px; font-size: 10px; color: #4f6a5f; background: var(--panel); padding: 9px 15px; border-radius: 20px; z-index: 2; box-shadow: 0 8px 25px #3b534010; }
+
+/* 详情 */
+.selection { position: absolute; right: 100px; top: 170px; width: 280px; padding: 24px; border-radius: 5px; z-index: 3; animation: rise .35s ease; }
+.selection h2 { font-family: "Songti SC", "STSong", "SimSun", serif; font-weight: 400; font-size: 22px; margin: 0 0 12px; }
+.selection p { font-size: 11px; line-height: 2; color: #6f7c72; margin: 0 0 16px; }
+.stats { display: flex; gap: 18px; padding: 14px 0; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); margin-bottom: 16px; }
+.stats strong { font-family: Georgia, serif; font-weight: 400; font-size: 20px; display: block; }
+.stats span { font-size: 9px; color: #869184; }
+#focus-button { font-size: 12px; color: var(--green); }
+.close { position: absolute; right: 14px; top: 10px; font-size: 20px; color: #7d877f; }
+
+/* 导览卡片 */
+.tour-card { position: absolute; left: 44px; bottom: 120px; width: 360px; padding: 26px 28px 22px; z-index: 3; color: #f4f6ef; background: linear-gradient(135deg, rgba(24, 52, 45, .86), rgba(24, 52, 45, .66)); border-radius: 4px; backdrop-filter: blur(10px); opacity: 0; transform: translateY(16px); pointer-events: none; transition: opacity .7s, transform .7s; }
+.tour-card.show { opacity: 1; transform: none; }
+.tour-head { display: flex; align-items: baseline; gap: 14px; font-size: 9px; letter-spacing: 2.5px; color: #a9c7b4; }
+.tour-head em { font-family: Georgia, serif; font-style: normal; font-size: 30px; color: #e9f0d5; letter-spacing: 0; }
+.tour-card h3 { font-family: "Songti SC", "STSong", "SimSun", serif; font-weight: 400; font-size: 26px; margin: 8px 0 10px; letter-spacing: 2px; }
+.tour-card p { font-size: 12px; line-height: 2; margin: 0; color: #d7e2d8; }
+.tour-dots { display: flex; gap: 6px; margin-top: 18px; }
+.tour-dots i { flex: 1; height: 2px; background: rgba(255, 255, 255, .2); transition: background .6s; }
+.tour-dots i.on { background: #cfe3a6; }
+
+/* 视角工具 */
+.view-tools { position: absolute; right: 44px; top: 50%; transform: translateY(-50%); display: flex; flex-direction: column; background: var(--panel); border-radius: 28px; padding: 8px 0; z-index: 2; box-shadow: 0 8px 25px #3b534010; }
+.view-tools button { width: 50px; height: 44px; font-size: 19px; }
+.view-tools hr { width: 22px; border: 0; border-top: 1px solid var(--line); margin: 4px auto; }
+.is-night .view-tools, .is-night .scene-status, .is-night .toolbar { background: rgba(30, 42, 52, .82); border-color: rgba(255, 255, 255, .08); color: #e6ece4; }
+.is-night .scene-status { color: #b8cbbf; }
+
+/* 底部工具栏 */
+.toolbar { position: absolute; left: 50%; bottom: 36px; transform: translateX(-50%); display: flex; align-items: center; gap: 4px; padding: 10px; border-radius: 6px; z-index: 3; white-space: nowrap; }
+.toolbar button { font-size: 13px; padding: 10px 14px; border-radius: 4px; display: flex; align-items: center; gap: 7px; transition: background .25s, color .25s; }
+.toolbar button .ico { font-size: 12px; width: 14px; text-align: center; opacity: .8; }
+.toolbar button.primary { background: var(--green); color: #f1f5ea; padding: 10px 16px; }
+.toolbar button.primary:hover { background: #17463c; }
+.toolbar button.active:not(.primary) { background: #e3ead9; color: #1f5b4c; }
+.is-night .toolbar button.active:not(.primary) { background: rgba(207, 227, 166, .16); color: #e9f0d5; }
+.toolbar button.primary.active { background: #8b3a2f; }
+.toolbar .sep { width: 1px; height: 26px; background: var(--line); margin: 0 8px; }
+.ico.rec { display: inline-block; width: 9px !important; height: 9px; border-radius: 50%; background: #c8463b; }
+#btn-record.active .ico.rec { animation: blink 1s infinite; }
+
+.hint { position: absolute; left: 44px; bottom: 14px; font-size: 10px; color: #6c7a70; margin: 0; z-index: 2; }
+.foot { position: absolute; right: 44px; bottom: 14px; font-size: 10px; letter-spacing: 1.5px; color: #7c897f; margin: 0; z-index: 2; }
+.foot b { font-weight: 400; margin-left: 24px; color: #263e38; }
+.is-night .hint, .is-night .foot, .is-night .foot b { color: #9fb2a6; }
+
+/* 标注 */
+.label { position: absolute; left: 0; top: 0; white-space: nowrap; will-change: transform; }
+.label-building { pointer-events: auto; cursor: pointer; display: flex; align-items: center; gap: 8px; padding: 6px 10px 6px 6px; font-size: 11px; background: rgba(250, 251, 246, .92); border-radius: 3px; box-shadow: 0 6px 18px #3b534018; }
+.label-building::after { content: ""; position: absolute; left: 50%; top: 100%; width: 1px; height: 16px; background: rgba(38, 62, 56, .45); }
+.label-building b { display: grid; place-items: center; width: 20px; height: 20px; font-weight: 500; font-size: 10px; background: #e3ead9; color: #1f5b4c; border-radius: 2px; }
+.label-building:hover { background: #fff; }
+.label-place { font-size: 11px; letter-spacing: 3px; color: #4b6157; text-shadow: 0 0 6px #f4f5ef, 0 0 2px #f4f5ef; }
+.label-title { font-family: "Songti SC", "STSong", "SimSun", serif; font-size: 15px; letter-spacing: 6px; color: #1f4a40; text-shadow: 0 0 10px #f4f5ef; }
+.is-night .label-building { background: rgba(26, 38, 47, .88); color: #e6ece4; }
+.is-night .label-building b { background: rgba(207, 227, 166, .18); color: #e9f0d5; }
+.is-night .label-place, .is-night .label-title { color: #d7e5dc; text-shadow: 0 0 6px #0b1016; }
+
+/* 开场时隐藏部分 UI */
+.intro-playing .toolbar, .intro-playing .view-tools { opacity: .35; pointer-events: none; }
+.toolbar, .view-tools { transition: opacity .8s; }
+
+/* 说明弹窗 */
+.sources { width: min(560px, 92vw); border: 0; border-radius: 6px; padding: 34px 36px; color: #263e38; background: #fafbf6; box-shadow: 0 30px 80px #1d2e2840; }
+.sources::backdrop { background: rgba(30, 44, 38, .35); backdrop-filter: blur(3px); }
+.sources h2 { font-family: "Songti SC", "STSong", "SimSun", serif; font-weight: 400; font-size: 26px; margin: 0 0 18px; }
+.sources dl { display: grid; grid-template-columns: 50px 1fr; gap: 10px 14px; font-size: 12px; line-height: 1.8; margin: 0 0 18px; }
+.sources dt { color: #869184; }
+.sources dd { margin: 0; }
+.sources h4 { font-size: 12px; letter-spacing: 2px; margin: 0 0 8px; color: #3f6b55; }
+.sources ul { font-size: 11px; line-height: 2; padding-left: 18px; margin: 0 0 14px; color: #55645b; }
+.sources a { color: #1f6b56; }
+.muted { font-size: 10px; color: #8a948c; line-height: 1.8; margin: 0; }
+
+@keyframes rise { from { opacity: 0; transform: translateY(10px); } }
+@keyframes blink { 50% { opacity: .2; } }
+
+@media (max-width: 900px) {
+  .intro { display: none; }
+  .topbar { padding: 0 18px; }
+  .project-name span, .hint, .foot { display: none; }
+  .toolbar { bottom: 16px; max-width: 96vw; overflow-x: auto; }
+  .toolbar button { padding: 9px 10px; font-size: 12px; }
+  .view-tools { right: 12px; }
+  .tour-card { left: 12px; right: 12px; width: auto; bottom: 90px; }
+  .selection { right: 12px; left: 12px; width: auto; top: auto; bottom: 90px; }
+}

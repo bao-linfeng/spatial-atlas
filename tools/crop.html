@@ -1,0 +1,49 @@
+<!doctype html>
+<!-- 开发辅助：裁切参考底图并叠加「底图像素 P 坐标」网格，用于数字化路网 -->
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#222}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script>
+const q = new URLSearchParams(location.search);
+const img = new Image();
+img.src = '../docs/' + (q.get('img') || '02f28cf8-5e32-4b28-bc6c-c551a4f5e16d.png');
+// 显示坐标(2000 宽) → P 像素：old = o + (d - m) * k
+const k = +(q.get('k') || 1.271), mx = +(q.get('mx') || 1070), my = +(q.get('my') || 555);
+const ox = +(q.get('ox') || 977), oy = +(q.get('oy') || 521);
+const sx = +(q.get('sx') || 0), sy = +(q.get('sy') || 0);   // 卫星图相对矢量图偏移（显示坐标）
+const toOld = (xd, yd) => [ox + (xd - sx - mx) * k, oy + (yd - sy - my) * k];
+const toDisp = (X, Y) => [(X - ox) / k + mx + sx, (Y - oy) / k + my + sy];
+// 裁切范围以 P 坐标给出
+const X0 = +q.get('x0'), X1 = +q.get('x1'), Y0 = +q.get('y0'), Y1 = +q.get('y1');
+const step = +(q.get('step') || 50), scale = +(q.get('s') || 1);
+img.onload = () => {
+  const r = img.naturalWidth / 2000;
+  const [dx0, dy0] = toDisp(X0, Y0), [dx1, dy1] = toDisp(X1, Y1);
+  const c = document.getElementById('c');
+  const W = (X1 - X0) * scale, H = (Y1 - Y0) * scale;
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.drawImage(img, dx0 * r, dy0 * r, (dx1 - dx0) * r, (dy1 - dy0) * r, 0, 0, W, H);
+  g.font = '11px monospace';
+  for (let X = Math.ceil(X0 / step) * step; X <= X1; X += step) {
+    const x = (X - X0) * scale;
+    g.strokeStyle = X % (step * 2) ? 'rgba(255,0,0,.35)' : 'rgba(255,0,0,.7)';
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+    g.fillStyle = '#f00'; g.fillText(X, x + 2, 11);
+  }
+  for (let Y = Math.ceil(Y0 / step) * step; Y <= Y1; Y += step) {
+    const y = (Y - Y0) * scale;
+    g.strokeStyle = Y % (step * 2) ? 'rgba(0,0,255,.35)' : 'rgba(0,0,255,.7)';
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+    g.fillStyle = '#00f'; g.fillText(Y, 2, y - 2);
+  }
+  // 可选叠加折线：ov=x,y;x,y|x,y;...
+  (q.get('ov') || '').split('|').filter(Boolean).forEach((s, i) => {
+    g.strokeStyle = ['#ff00ff', '#00c000', '#ff8800', '#00aaff'][i % 4]; g.lineWidth = 2;
+    g.beginPath();
+    s.split(';').forEach((p, j) => { const [X, Y] = p.split(',').map(Number); const x = (X - X0) * scale, y = (Y - Y0) * scale; j ? g.lineTo(x, y) : g.moveTo(x, y); });
+    g.stroke();
+  });
+  document.title = 'ready';
+};
+</script>

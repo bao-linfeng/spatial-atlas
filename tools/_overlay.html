@@ -1,0 +1,51 @@
+<!doctype html>
+<!-- 开发辅助：卫星截图（百度 B_EARTH_MAP）叠加底图像素 P 网格与现有路网，用于数字化互通匝道 -->
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#111}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script type="module">
+import * as L from '../src/layout.js';
+const q = new URLSearchParams(location.search);
+// 截图视口：百度墨卡托中心、缩放、DPR（读自浏览器 map 对象）
+const CX = 13362117.430865385, CY = 3717039.377645886, RES = 2 ** (18 - 17.906141390769836), DPR = 2000 / 1707;
+const POI = [13362167.77, 3716921.93];
+const s = +(q.get('s') || 1.59), p0 = [+(q.get('px') || 971), +(q.get('py') || 553)];   // 按园区红线外框拟合（P 像素 / 墨卡托单位，POI 处 P 坐标）
+const rot = +(q.get('rot') || 0) * Math.PI / 180;
+const img = new Image(); img.src = '../.research/sat5.png';
+const W = 2000, H = 1053;
+const mc2img = (x, y) => [W / 2 + (x - CX) / RES * DPR, H / 2 - (y - CY) / RES * DPR];
+const p2img = (px, py) => {
+  const dx = (px - p0[0]) / s, dy = (py - p0[1]) / s;
+  const rx = dx * Math.cos(rot) - dy * Math.sin(rot), ry = dx * Math.sin(rot) + dy * Math.cos(rot);
+  return mc2img(POI[0] + rx, POI[1] - ry);
+};
+const m2p = ([x, z]) => [x / L.PX + 1000, z / L.PX + 560];
+img.onload = () => {
+  const cv = document.getElementById('c'), g = cv.getContext('2d');
+  const crop = (q.get('crop') || `0,0,${W},${H}`).split(',').map(Number), k = +(q.get('k') || 1);
+  cv.width = crop[2] * k; cv.height = crop[3] * k;
+  g.setTransform(k, 0, 0, k, -crop[0] * k, -crop[1] * k);
+  g.drawImage(img, 0, 0);
+  g.lineWidth = 1 / k * 1.2; g.font = `${11 / k}px sans-serif`;
+  const step = +(q.get('step') || 50);
+  for (let x = -400; x <= 2000; x += step) {
+    g.strokeStyle = x % 100 ? 'rgba(255,255,255,.25)' : 'rgba(255,255,0,.6)';
+    g.beginPath(); for (let y = -600; y <= 1300; y += 20) g.lineTo(...p2img(x, y)); g.stroke();
+  }
+  for (let y = -600; y <= 1300; y += step) {
+    g.strokeStyle = y % 100 ? 'rgba(255,255,255,.25)' : 'rgba(255,255,0,.6)';
+    g.beginPath(); for (let x = -400; x <= 2000; x += 20) g.lineTo(...p2img(x, y)); g.stroke();
+  }
+  g.fillStyle = '#ff0';
+  for (let x = -400; x <= 2000; x += 100) for (let y = -600; y <= 1300; y += 100) g.fillText(`${x},${y}`, ...p2img(x + 3, y - 3));
+  const line = (pts, col, w = 2) => { g.strokeStyle = col; g.lineWidth = w / k; g.beginPath(); pts.forEach(p => g.lineTo(...p2img(...p))); g.stroke(); };
+  if (!q.has('bare')) {
+    line(L.QINGYANG_AXIS.map(m2p), '#f0f');
+    line(L.HEHAI_ROAD.map(m2p), '#0ff');
+    line(L.HIGHWAY.map(m2p), '#f80');
+    line(L.CHUANGKE_ROAD.map(m2p), '#0ff');
+    line([...L.BOUNDARY.map(m2p), m2p(L.BOUNDARY[0])], '#08f');
+    for (const r of L.ELEVATED_RAMPS) line(r.pts, '#f00', 3);
+  }
+};
+</script>
