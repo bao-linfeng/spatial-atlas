@@ -89,9 +89,10 @@ export function tower(ctx, t, at) {
 }
 
 // 周边建筑：浅色概念体量，大跨厂房加屋面采光带。加入 ctx.context 分组，需先 ctx.addGroup('context')。
-export function contextBox(ctx, x, z, w, d, h, a, mat = ctx.M.ctx) {
+// roof 为顶面材质（缺省 M.roof）。
+export function contextBox(ctx, x, z, w, d, h, a, mat = ctx.M.ctx, roof = ctx.M.roof) {
   const { M, context } = ctx;
-  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [mat, mat, M.roof, M.roof, mat, mat]);
+  const m = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), [mat, mat, roof, M.roof, mat, mat]);
   m.position.set(x, h / 2, z); m.rotation.y = a; m.castShadow = m.receiveShadow = true;
   context.add(m);
   if (w * d > 1800) for (let k = -w / 2 + 6; k < w / 2 - 3; k += 9) {

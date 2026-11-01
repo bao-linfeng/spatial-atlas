@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { V3, insertY, densify, ribbon, flatPoly, offsetLine } from '../../../core/geom.js';
 import { makeBlock, roofKit, placeBuilding, tower } from '../../../core/kit/buildings.js';
+import { roofMaterial, capMaterials } from './roofs.js';
 import {
   P, GRID_ANGLE, PARK_LOT, PARK_ROADS, TOWERS, WEST_TOWERS, STUDIO, PODIUM, QINGSHANG, QINGSHANG_PLAZA, ANNEX, RETAIL,
 } from '../layout.js';
@@ -10,11 +11,11 @@ const ORANGE = 0xe0602a;   // 楼顶标识 / 檐口橙色（航拍）
 // 局部坐标 (x 沿 GRID_ANGLE，z 垂直) → 场景米
 const local = ([cx, cz], x, z, a = GRID_ANGLE) => [cx + x * Math.cos(a) + z * Math.sin(a), cz - x * Math.sin(a) + z * Math.cos(a)];
 
-// 白色方窗塔楼：core 的 tower() + 白色檐口 + 楼顶一角的橙色标识牌
+// 白色方窗塔楼：core 的 tower() + 白色檐口（顶面贴卫星图配色的屋面）+ 楼顶一角的橙色标识牌
 function whiteTower(ctx, t, orange) {
   const root = tower(ctx, { ...t, style: 'punch' }, t.pos);
   const H = root.userData.height, grow = root.userData.grow;
-  const crown = new THREE.Mesh(new THREE.BoxGeometry(t.w + 0.6, 1.6, t.d + 0.6), ctx.M.white);
+  const crown = new THREE.Mesh(new THREE.BoxGeometry(t.w + 0.6, 1.6, t.d + 0.6), capMaterials(ctx.M.white, roofMaterial('tower', t.w + 0.6, t.d + 0.6)));
   crown.position.y = H + 0.8; grow.add(crown);
   if (t.logo) {
     const logo = new THREE.Mesh(new THREE.BoxGeometry(t.w * 0.3, 2.6, 0.4), orange);
@@ -23,13 +24,14 @@ function whiteTower(ctx, t, orange) {
   return root;
 }
 
-// 普通体量建筑（裙房、商业、配套）：makeBlock + 屋面设备，登记为可点选
+// 普通体量建筑（裙房、商业、配套）：makeBlock + 平屋面贴图 + 屋面设备，登记为可点选
 function block(ctx, rec, { style, floorH, lid = true, side } = {}) {
   const { root, grow } = placeBuilding(ctx, rec, rec.pos);
   const b = makeBlock(ctx, { ...rec, style, sideStyle: side || style, floorH });
+  b.mesh.material[2] = roofMaterial('flat', rec.w, rec.d);
   grow.add(b.mesh); ctx.pickables.push(b.mesh); b.mesh.userData.bld = root;
   if (lid) {
-    const l = new THREE.Mesh(new THREE.BoxGeometry(rec.w + 1, 0.8, rec.d + 1), ctx.M.white);
+    const l = new THREE.Mesh(new THREE.BoxGeometry(rec.w + 1, 0.8, rec.d + 1), capMaterials(ctx.M.white, roofMaterial('flat', rec.w + 1, rec.d + 1)));
     l.position.y = b.H + 0.4; grow.add(l);
   }
   roofKit(ctx, grow, rec.w, rec.d, b.H, { parapet: false });
@@ -74,6 +76,7 @@ export function buildCampus(ctx) {
     const s = STUDIO, { root, grow } = placeBuilding(ctx, s, s.pos);
     const wing = (w, d, f, x, z, style) => {
       const b = makeBlock(ctx, { w, d, f, style, sideStyle: style, floorH: 4 });
+      b.mesh.material[2] = roofMaterial('flat', w, d);
       b.mesh.position.set(x, 0, z); grow.add(b.mesh); ctx.pickables.push(b.mesh); b.mesh.userData.bld = root;
       const g = new THREE.Group(); g.position.set(x, 0, z); grow.add(g); roofKit(ctx, g, w, d, b.H);
       return b.H;
@@ -81,6 +84,7 @@ export function buildCampus(ctx) {
     const H = wing(s.w, 12, s.f, 0, -s.d / 2 + 6, 'slab');
     wing(12, s.d - 12, s.f, -s.w / 2 + 6, 6, 'slab');
     const hall = makeBlock(ctx, { w: s.w - 14, d: s.d - 14, f: 2, style: 'podium', floorH: 4.5 });
+    hall.mesh.material[2] = roofMaterial('flat', s.w - 14, s.d - 14);
     hall.mesh.position.set(7, 0, 7); grow.add(hall.mesh); ctx.pickables.push(hall.mesh); hall.mesh.userData.bld = root;
     // 屋顶球场：蓝色篮球场、绿色网球场、红色跑道
     const court = (w, d, x, z, color, y = hall.H + 0.05) => {

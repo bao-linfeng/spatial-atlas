@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { V3, insertY, flatPoly, pointInPoly } from '../../../core/geom.js';
 import { makeBlock, roofKit, contextBox } from '../../../core/kit/buildings.js';
 import { isBlocked } from '../../../core/kit/scatter.js';
+import { roofMaterial, capMaterials } from './roofs.js';
 import { GRID_ANGLE, GREENS, CONTEXT_TOWERS, CONTEXT_BLOCKS, RES_ZONES, PLACES } from '../layout.js';
 
 const RES_FLOOR = 3;   // 住宅层高 m
@@ -11,7 +12,7 @@ export function buildGreens(ctx) {
   GREENS.forEach((g, i) => ctx.world.add(flatPoly(g, 0.34 + i * 0.01, i % 2 ? ctx.M.lawn : ctx.M.lawnLight)));
 }
 
-// 周边：高层白楼、多层与厂房体量
+// 周边：高层白楼、多层与厂房体量；屋面按卫星图配色（大跨厂房为金属屋面）
 export function buildContext(ctx) {
   const { M } = ctx;
   const context = ctx.addGroup('context');
@@ -20,14 +21,17 @@ export function buildContext(ctx) {
     const g = new THREE.Group(); g.position.set(t.pos[0], 0, t.pos[1]); g.rotation.y = a; context.add(g);
     const b = makeBlock(ctx, { w: t.w, d: t.d, f: t.f, style: 'punch' });
     g.add(b.mesh);
-    const crown = new THREE.Mesh(new THREE.BoxGeometry(t.w + 0.6, 1.6, t.d + 0.6), M.white);
+    const crown = new THREE.Mesh(new THREE.BoxGeometry(t.w + 0.6, 1.6, t.d + 0.6), capMaterials(M.white, roofMaterial('tower', t.w + 0.6, t.d + 0.6)));
     crown.position.y = b.H + 0.8; g.add(crown);
     roofKit(ctx, g, t.w, t.d, b.H, { solar: true });
     ctx.blockers.rects.push({ c: t.pos, w: t.w + 6, d: t.d + 6, a });
     ctx.place(t.name, V3(t.pos[0], b.H + 14, t.pos[1]));
   }
   const mat = { blue: M.ctxBlue, gray: M.ctxGray };
-  for (const b of CONTEXT_BLOCKS) contextBox(ctx, b.pos[0], b.pos[1], b.w, b.d, b.h, b.a ?? GRID_ANGLE, mat[b.c] || M.ctx);
+  for (const b of CONTEXT_BLOCKS) {
+    const roof = roofMaterial(b.w * b.d > 1800 ? 'metal' : 'flat', b.w, b.d, b.roof);
+    contextBox(ctx, b.pos[0], b.pos[1], b.w, b.d, b.h, b.a ?? GRID_ANGLE, mat[b.c] || M.ctx, roof);
+  }
 }
 
 // 住宅片区：在多边形内逐行排布条式住宅，避开道路、河道与已登记的建筑（须在路网与建筑之后调用）
@@ -48,6 +52,7 @@ export function buildHousing(ctx) {
         if (ok) {
           const f = z.f[0] + Math.floor(rand() * (z.f[1] - z.f[0] + 1));
           const b = makeBlock(ctx, { w: L, d: z.d, f, style: 'slab', floorH: RES_FLOOR });
+          b.mesh.material[2] = roofMaterial('house', Math.round(L / 4) * 4, z.d);
           b.mesh.position.set(c[0], 0, c[1]); b.mesh.rotation.y = z.a; ctx.context.add(b.mesh);
           ctx.blockers.rects.push({ c, w: L + 4, d: z.d + 4, a: z.a });
           u += L + 7 + rand() * 9;

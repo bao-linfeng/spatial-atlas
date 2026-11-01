@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { V3, insertY, smooth, densify, ribbon, offsetLine, distToPolyline, polyIntersect } from '../../../core/geom.js';
 import { groundRoad } from '../../../core/kit/roads.js';
+import { laneOn, route } from '../../../core/lanes.js';
 import { buildBridge } from './bridge.js';
 import {
   P, YULONG, YULONG_W, SERVICE, YULAN, YULAN_W, YUNHE, YUNHE_W, YINXING, YINXING_W, DONGZI_W, DONGZI_E, DONGZI_RW,
@@ -8,9 +9,6 @@ import {
 } from '../layout.js';
 
 const MAIN_Y = 0.86;
-
-// 往返车道：沿右侧车道开到尽头，掉头沿对侧返回，首尾相接（用于一端止于丁字路口的道路）
-const loop = (pts, o, y, speed, count) => ({ pts: [...offsetLine(pts, o), ...offsetLine(pts, -o).reverse(), offsetLine(pts, o)[0]], y, dir: 1, speed, count });
 
 // 外部路网：玉龙南路（主路 + 辅路 + 玉新桥）、玉兰路、运河路、银杏路、董子河东 / 西路、周边支路。
 // 返回种行道树要用的中线
@@ -54,7 +52,7 @@ export function buildRoads(ctx, { canal, baihe }) {
 
   // ── 玉兰路 / 运河路 / 银杏路（两端均到沙盘边缘）──
   const yulan = smooth(YULAN, 6);
-  groundRoad(ctx, yulan, YULAN_W, { lanes: [[2.8, 1], [6.6, 1], [-2.8, -1], [-6.6, -1]], speed: 11, count: 6, lamp: 32 });
+  const yulanY = groundRoad(ctx, yulan, YULAN_W, { lanes: [[2.8, 1], [6.6, 1], [-2.8, -1], [-6.6, -1]], speed: 11, count: 6, lamp: 32 }) + 0.05;
   ctx.place('玉兰路', V3(...insertY(P(1110, 137), 3)));
   const yunhe = smooth(YUNHE, 6);
   groundRoad(ctx, yunhe, YUNHE_W, { lanes: [[3.2, 1], [7.6, 1], [-3.2, -1], [-7.6, -1]], speed: 12, count: 5, lamp: 32 });
@@ -63,11 +61,18 @@ export function buildRoads(ctx, { canal, baihe }) {
   groundRoad(ctx, yinxing, YINXING_W, { lanes: [[2.4, 1], [6.2, 1], [-2.4, -1], [-6.2, -1]], speed: 10, count: 5, lamp: 30 });
   ctx.place('银杏路', V3(...insertY(P(640, 700), 3)));
 
-  // ── 董子河西路 / 东路：北端止于玉兰路，往返行驶 ──
+  // ── 董子河西路 / 东路：北端止于玉兰路（丁字路口），车流在路口转入玉兰路，两头都到沙盘边缘 ──
+  // 玉兰路自西向东，+ 侧为东行；董子河路自北向南，+ 侧为南行。右转走外侧车道，左转走内侧车道
   const dzw = densify(DONGZI_W, 8), dze = densify(DONGZI_E, 8);
   for (const l of [dzw, dze]) {
-    groundRoad(ctx, l, DONGZI_RW, { lamp: 30 });
-    ctx.carPaths.push(loop(l, 2.6, 0.84, 8 + rand() * 2, 4));
+    const y = groundRoad(ctx, l, DONGZI_RW, { lamp: 30 }) + 0.05, speed = 8 + rand() * 2;
+    const south = laneOn(l, 2.6, y), north = laneOn(l, -2.6, y);
+    for (const r of [
+      route(laneOn(yulan, 6.6, yulanY), south),               // 玉兰路东行 → 右转南行
+      route(laneOn(yulan, -2.8, yulanY), [south, 12]),        // 玉兰路西行 → 左转南行
+      route(north, laneOn(yulan, 6.6, yulanY)),               // 北行 → 右转玉兰路东行
+      route(north, [laneOn(yulan, -2.8, yulanY), 12]),        // 北行 → 左转玉兰路西行
+    ]) ctx.carPaths.push({ ...r, dir: 1, speed, count: 2 });
   }
   ctx.place('董子河西路', V3(...insertY(P(300, 330), 3)));
   ctx.place('董子河东路', V3(...insertY(P(560, 420), 3)));

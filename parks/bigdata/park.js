@@ -47,7 +47,7 @@ export default {
     ],
     sources: [
       '百度地图矢量图（20 m / 50 m 比例尺）：道路中线、园区面、地名；以园区面 8 个折点配准各截图（parks/bigdata/tools/reg.js）',
-      '百度卫星图：运河与白鹤河岸线、绿地与林带、建筑屋面位置（按高楼倾斜回推落地位置）',
+      '百度卫星图：运河与白鹤河岸线、绿地与林带、建筑屋面位置（按高楼倾斜回推落地位置）与屋面配色（parks/bigdata/build/roofs.js）',
       '视觉中国航拍（VCG211452883135 / 883221 / 883400 / 883496 / 883574）：塔楼立面、层数、裙房与玉龙南路断面',
       '<a href="https://www.sohu.com/a/729614164_121123904" target="_blank" rel="noopener">2023 年园区航拍（克而瑞常州）</a> · <a href="http://www.china-qiao.com/ql16/czql/czql012.htm" target="_blank" rel="noopener">老百晓集桥 · 玉新桥</a>',
     ],
