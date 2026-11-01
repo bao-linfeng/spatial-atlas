@@ -3,6 +3,7 @@ import { rng } from './rng.js';
 import { createMaterials } from './materials.js';
 import { isBlocked } from './kit/scatter.js';
 import { buildTrees, buildCars, buildLamps } from './kit/instances.js';
+import { shuttleLane } from './lanes.js';
 
 // 场景构建上下文：园区的 build(ctx) 往这里登记内容，finalize() 统一收尾（种树、车流、路灯）。
 // plate：沙盘范围（场景米）{ x0, x1, z0, z1 }；gridAngle：园区建筑的默认朝向；sign：标识文字。
@@ -40,11 +41,16 @@ export function finalize(ctx) {
   const trees = buildTrees(finalTrees);
   world.add(trees.group);
 
-  // 双向单车道小路（带 offset）若有端点落在沙盘内部，改为往返：开到尽头掉头沿对侧返回，不在路中凭空消失
+  // 双向单车道小路（带 offset，沿中线行驶、靠右偏移）若有端点落在沙盘内部，改为往返车道：开到尽头半圆掉头沿对侧返回，
+  // 不在路中凭空消失，也不原地调头。一端在沙盘边缘时把这一端放在起点，车辆在边缘回绕
   for (const c of carPaths) {
-    if (!c.offset || (!inPlate(...c.pts[0], 25) && !inPlate(...c.pts.at(-1), 25))) continue;
-    c.pts = [...c.pts, ...c.pts.slice(0, -1).reverse()];
-    if (c.ys) c.ys = [...c.ys, ...c.ys.slice(0, -1).reverse()];
+    if (!c.offset) continue;
+    const fwd = c.dir > 0, at = p => !inPlate(...p, 25);
+    let pts = fwd ? c.pts : c.pts.slice().reverse(), ys = c.ys && (fwd ? c.ys : c.ys.slice().reverse());
+    const e0 = at(pts[0]), e1 = at(pts.at(-1));
+    if (e0 && e1) continue;
+    if (e1) { pts = pts.slice().reverse(); ys = ys && ys.slice().reverse(); }
+    Object.assign(c, shuttleLane(pts, c.offset, ys || c.y, e0 || e1), { dir: 1, offset: 0 });
   }
   const cars = buildCars(carPaths);
   world.add(cars.group);

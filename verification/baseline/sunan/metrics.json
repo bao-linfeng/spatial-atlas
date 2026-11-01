@@ -9,5 +9,7 @@
   "instances": 7575,
   "vertices": 891481,
   "carJumps": {},
+  "carHops": {},
+  "carFlips": {},
   "errors": []
 }

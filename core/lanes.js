@@ -1,4 +1,4 @@
-import { sub2, len2, norm2 } from './geom.js';
+import { sub2, len2, norm2, offsetLine } from './geom.js';
 
 // ── 车道：按行驶方向的折线 { pts, ys }，用于路口转向拼接 ──
 export const laneOf = (pts, y) => ({ pts, ys: Array.isArray(y) ? y : pts.map(() => y) });
@@ -24,14 +24,15 @@ export function cutLane(l, cum, s0, s1) {
   return out;
 }
 // 路口转向：a 行至与 b 交点前 r 米，经二次贝塞尔（控制点为交点）接入 b 交点后 r 米；
-// T 形路口车道未必相交，故 a 末端向前、b 起点向后各延长 40 m 再求交
+// T 形路口车道未必相交，故 a 末端向前、b 起点向后各延长 40 m 再求交。交点取沿 a 最后一个（转弯发生在 a 的末端；
+// a 是拼接过的路线时，前段可能早已穿过 b 所在的道路）
 export function turnLane(a, b, r = 9) {
   const n = a.pts.length, da = norm2(sub2(a.pts[n - 1], a.pts[n - 2])), db = norm2(sub2(b.pts[0], b.pts[1]));
   const A = { pts: [...a.pts, [a.pts[n - 1][0] + da[0] * 40, a.pts[n - 1][1] + da[1] * 40]], ys: [...a.ys, a.ys[n - 1]] };
   const B = { pts: [[b.pts[0][0] + db[0] * 40, b.pts[0][1] + db[1] * 40], ...b.pts], ys: [b.ys[0], ...b.ys] };
   const ca = laneCum(A.pts), cb = laneCum(B.pts);
   let sa = -1, sb = -1;
-  for (let i = 1; i < A.pts.length && sa < 0; i++) for (let j = 1; j < B.pts.length; j++) {
+  for (let i = A.pts.length - 1; i > 0 && sa < 0; i--) for (let j = 1; j < B.pts.length; j++) {
     const p = A.pts[i - 1], q = B.pts[j - 1], u = sub2(A.pts[i], p), v = sub2(B.pts[j], q), den = u[0] * v[1] - u[1] * v[0];
     if (Math.abs(den) < 1e-9) continue;
     const t = ((q[0] - p[0]) * v[1] - (q[1] - p[1]) * v[0]) / den, w = ((q[0] - p[0]) * u[1] - (q[1] - p[1]) * u[0]) / den;
@@ -48,4 +49,31 @@ export function turnLane(a, b, r = 9) {
     head.ys.push(y0 + (y2 - y0) * t);
   }
   return { pts: [...head.pts, ...tail.pts], ys: [...head.ys, ...tail.ys] };
+}
+
+// 道路中线 pts 上横向偏移 o 米的车道，按右侧通行取行驶方向：o > 0 顺 pts 方向，o < 0 逆向
+export const laneOn = (pts, o, y) => { const l = laneOf(offsetLine(pts, o), y); return o > 0 ? l : revLane(l); };
+// 路线：从车道 a 出发，依次在路口转入后续车道（turnLane）；每项为车道或 [车道, 转弯半径 r]
+export const route = (a, ...turns) => turns.reduce((l, t) => (Array.isArray(t) ? turnLane(l, ...t) : turnLane(l, t)), a);
+
+// 往返车道（端点落在沙盘内部的双向单车道小路）：沿 pts 右侧 o 米开到终点，半圆掉头（半径 o）沿对侧返回。
+// open = false：起点同样半圆掉头，首尾相接成闭环；open = true：起点在沙盘边缘，返回后在边缘回绕到起点
+export function shuttleLane(pts, o, y, open = false) {
+  const ys = Array.isArray(y) ? y : pts.map(() => y);
+  const R = offsetLine(pts, o), L = offsetLine(pts, -o).reverse();
+  // 掉头半圆：圆心 c，从右侧 c + n·o 经前方 c + t·o 到左侧 c − n·o（t 为行驶方向，n 为其右侧单位向量）
+  const uturn = (c, side, t) => {
+    const n = norm2(sub2(side, c));
+    return Array.from({ length: 7 }, (_, k) => {
+      const a = (k + 1) / 8 * Math.PI;
+      return [c[0] + (n[0] * Math.cos(a) + t[0] * Math.sin(a)) * o, c[1] + (n[1] * Math.cos(a) + t[1] * Math.sin(a)) * o];
+    });
+  };
+  const n = pts.length, e = uturn(pts[n - 1], R[n - 1], norm2(sub2(pts[n - 1], pts[n - 2])));
+  const out = { pts: [...R, ...e, ...L], ys: [...ys, ...e.map(() => ys[n - 1]), ...ys.slice().reverse()] };
+  if (!open) {
+    const s = uturn(pts[0], L[n - 1], norm2(sub2(pts[0], pts[1])));
+    out.pts.push(...s, R[0]); out.ys.push(...s.map(() => ys[0]), ys[0]);
+  }
+  return out;
 }

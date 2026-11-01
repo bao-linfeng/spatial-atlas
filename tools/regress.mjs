@@ -68,7 +68,7 @@ await shot('06-night');
 await run(async () => { const p = window.__park; p.applyNight(0); p.runTour(); await p.advance(12, 0.25); });
 await shot('07-tour');
 
-const metrics = await run(() => {
+const metrics = await run(async () => {
   const p = window.__park, W = p.W;
   let meshes = 0, instances = 0, vertices = 0;
   p.scene.traverse(o => {
@@ -78,26 +78,13 @@ const metrics = await run(() => {
     instances += n;
     vertices += (o.geometry.attributes.position?.count || 0) * n;
   });
-  // 车辆瞬移检测（同 tools/_jump.html）
-  const { cars, plateRect: r } = W, body = cars.group.children[0], a = body.instanceMatrix.array;
-  const n = body.count, prev = new Float32Array(n * 3), hits = {};
-  const snap = () => { for (let i = 0; i < n; i++) prev.set([a[i * 16 + 12], a[i * 16 + 13], a[i * 16 + 14]], i * 3); };
-  const edge = (x, z) => Math.min(x - r.x0, r.x1 - x, z - r.z0, r.z1 - z) < 25;
-  snap();
-  for (let k = 0; k < 6000; k++) {
-    cars.update(0.05);
-    for (let i = 0; i < n; i++) {
-      const x0 = prev[i * 3], z0 = prev[i * 3 + 2], x1 = a[i * 16 + 12], z1 = a[i * 16 + 14];
-      if (Math.hypot(x1 - x0, z1 - z0) > 6) for (const [x, z] of [[x0, z0], [x1, z1]]) if (!edge(x, z)) {
-        const key = `${Math.round(x / 20) * 20},${Math.round(z / 20) * 20}`; hits[key] = (hits[key] || 0) + 1;
-      }
-    }
-    snap();
-  }
+  // 车流异常：瞬移、横移、原地调头（同 tools/jump.html）
+  const { checkCars } = await import('/tools/carcheck.js');
+  const cars = checkCars(W);
   return {
     status: document.querySelector('#status').textContent,
     buildings: W.buildings.length, labels: W.labels.length, pickables: W.pickables.length,
-    trees: W.trees.count, cars: W.cars.count, meshes, instances, vertices, carJumps: hits,
+    trees: W.trees.count, cars: W.cars.count, meshes, instances, vertices, carJumps: cars.jump, carHops: cars.hop, carFlips: cars.flip,
   };
 });
 metrics.errors = errors;
