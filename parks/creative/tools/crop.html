@@ -1,0 +1,99 @@
+<!doctype html>
+<!-- 开发辅助：把参考截图按配准变换到「底图像素 P 坐标」（docs/area-50m-map.png 的像素），裁切并叠加 P 网格与现有布局，用于数字化。
+     ?img=park-20m-sat.png&x0=&y0=&x1=&y1=&s=4&step=10[&raw][&layout][&ov=x,y;x,y|...]
+     img 含 * 时把 0–5 号六块分块截图拼在一起（如 .research/sat-z19-*.png，各块底部 40 px 空白条不画）；
+     raw：不做配准，网格为截图自身像素（用于取配准控制点）；bld：叠加百度楼栋轮廓（data/buildings.js，按高度着色）；roads：叠加矢量图提取的道路（data/roads.js，标序号） -->
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#222}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script type="module">
+import { REG } from './reg.js';
+const q = new URLSearchParams(location.search);
+const name = q.get('img') || 'area-50m-map.png';
+const raw = q.has('raw');
+const names = name.includes('*') ? [0, 1, 2, 3, 4, 5].map(i => name.replace('*', i)) : [name];
+const load = n => new Promise((ok, err) => { const im = new Image(); im.onload = () => ok(im); im.onerror = err; im.src = (n.startsWith('.') ? '../' : '../docs/') + n; });
+const X0 = +q.get('x0'), X1 = +q.get('x1'), Y0 = +q.get('y0'), Y1 = +q.get('y1');
+const step = +(q.get('step') || 50), scale = +(q.get('s') || 1);
+(async () => {
+  const imgs = await Promise.all(names.map(load));
+  const c = document.getElementById('c');
+  const W = Math.round((X1 - X0) * scale), H = Math.round((Y1 - Y0) * scale);
+  c.width = W; c.height = H;
+  const g = c.getContext('2d');
+  g.imageSmoothingEnabled = scale < 3;
+  // 截图像素 (u, v) → P：x = a·u + b·v + c，y = d·u + e·v + f
+  imgs.forEach((img, i) => {
+    const [a, b, cc, d, e, f] = raw ? [1, 0, 0, 0, 1, 0] : REG[names[i]];
+    g.save();
+    g.setTransform(scale * a, scale * d, scale * b, scale * e, scale * (cc - X0), scale * (f - Y0));
+    if (names.length > 1) { g.beginPath(); g.rect(0, 0, img.width, img.height - 40); g.clip(); }
+    if (q.get('f')) g.filter = q.get('f');   // f：CSS 滤镜，如 brightness(.55) contrast(12)（矢量底图的楼块轮廓很淡）
+    g.drawImage(img, 0, 0);
+    g.restore();
+  });
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  // 细线每 step，粗线与坐标每 5 × step（标在每个交点旁，便于读数）
+  g.font = 'bold 12px monospace'; g.lineWidth = 1;
+  const major = step * 5;
+  for (let X = Math.ceil(X0 / step) * step; X <= X1; X += step) {
+    const x = (X - X0) * scale;
+    g.strokeStyle = X % major ? 'rgba(255,0,0,.22)' : 'rgba(255,0,0,.7)';
+    g.beginPath(); g.moveTo(x, 0); g.lineTo(x, H); g.stroke();
+  }
+  for (let Y = Math.ceil(Y0 / step) * step; Y <= Y1; Y += step) {
+    const y = (Y - Y0) * scale;
+    g.strokeStyle = Y % major ? 'rgba(0,80,255,.22)' : 'rgba(0,80,255,.7)';
+    g.beginPath(); g.moveTo(0, y); g.lineTo(W, y); g.stroke();
+  }
+  for (let X = Math.ceil(X0 / major) * major; X <= X1; X += major) for (let Y = Math.ceil(Y0 / major) * major; Y <= Y1; Y += major) {
+    const t = X + ',' + Y, x = (X - X0) * scale + 3, y = (Y - Y0) * scale - 4;
+    g.strokeStyle = '#fff'; g.lineWidth = 3; g.strokeText(t, x, y); g.fillStyle = '#c00'; g.fillText(t, x, y); g.lineWidth = 1;
+  }
+  const line = (pts, col, close = false) => {
+    g.strokeStyle = col; g.lineWidth = 2; g.beginPath();
+    pts.forEach(([X, Y], j) => { const x = (X - X0) * scale, y = (Y - Y0) * scale; j ? g.lineTo(x, y) : g.moveTo(x, y); });
+    if (close) g.closePath();
+    g.stroke();
+  };
+  (q.get('ov') || '').split('|').filter(Boolean).forEach((s, i) =>
+    line(s.split(';').map(p => p.split(',').map(Number)), ['#ff00ff', '#00c000', '#ff8800', '#00aaff'][i % 4]));
+  // 叠加现有布局（场景米 → P）：道路中线、水系、红线、绿地、建筑落地轮廓
+  if (q.has('layout')) {
+    const L = await import('../layout.js');
+    const m2p = ([x, z]) => [x / L.PX + L.ORIGIN[0], z / L.PX + L.ORIGIN[1]];
+    const draw = (pts, col, close) => line(pts.map(m2p), col, close);
+    for (const r of L.ROADS) draw(r.pts, '#ff00ff');
+    for (const r of L.LOCAL_ROADS) draw(r.pts, '#ff8800');
+    for (const p of L.WATERS) draw(p, '#00aaff', true);
+    for (const p of L.OPEN_WATER) draw(p, '#0040ff', true);
+    draw(L.BOUNDARY, '#0050ff', true);
+    for (const g of L.GREENS) draw(g, '#00c000', true);
+    const rect = (b, a = L.GRID_ANGLE) => draw([[-1, -1], [1, -1], [1, 1], [-1, 1]].map(([sx, sz]) => {
+      const x = sx * b.w / 2, z = sz * b.d / 2;
+      return [b.pos[0] + x * Math.cos(a) + z * Math.sin(a), b.pos[1] - x * Math.sin(a) + z * Math.cos(a)];
+    }), '#ff2020', true);
+    for (const b of L.PARK_BUILDINGS) for (const p of b.parts) draw(p.poly, '#ff2020', true);
+    for (const b of L.F_BLOCKS) rect(b, b.a);
+  }
+  if (q.has('bld')) {
+    const { default: B } = await import('../data/buildings.js');
+    B.forEach((o, i) => {
+      line(o.pts, `hsl(${Math.max(0, 300 - o.h * 3)}, 100%, 50%)`, true);
+      if (!q.has('ids')) return;   // ids：在轮廓中心标出序号与高度
+      const cx = o.pts.reduce((s, p) => s + p[0], 0) / o.pts.length, cy = o.pts.reduce((s, p) => s + p[1], 0) / o.pts.length;
+      const t = `${i}:${Math.round(o.h)}`, x = (cx - X0) * scale - 12, y = (cy - Y0) * scale + 4;
+      g.strokeStyle = '#000'; g.lineWidth = 3; g.strokeText(t, x, y); g.fillStyle = '#ff0'; g.fillText(t, x, y); g.lineWidth = 1;
+    });
+  }
+  if (q.has('roads')) {
+    const { default: R } = await import('../data/roads.js');
+    R.forEach(({ pts: l }, i) => {
+      line(l, `hsl(${(i * 67) % 360}, 100%, 45%)`);
+      const [x, y] = l[Math.floor(l.length / 2)], t = String(i), sx = (x - X0) * scale, sy = (y - Y0) * scale;
+      g.strokeStyle = '#fff'; g.lineWidth = 3; g.strokeText(t, sx, sy); g.fillStyle = '#000'; g.fillText(t, sx, sy); g.lineWidth = 1;
+    });
+  }
+  document.title = 'ready';
+})();
+</script>

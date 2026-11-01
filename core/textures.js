@@ -125,6 +125,22 @@ const STYLES = {
       ctx.fillStyle = 'rgba(255,255,255,.14)'; ctx.fillRect(x, y, w, 2);
     }
   },
+  // 红棕色玻璃幕墙 + 白色细竖框、深色层间线（常州创意产业园 B 座）
+  amber(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#5a2f28';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS * 2; c++) {
+      const x = c * BAY / 2, y = r * FLOOR;
+      ctx.fillStyle = night ? lit() : `hsl(${8 + rand() * 6}, ${38 + rand() * 10}%, ${30 + rand() * 9}%)`;
+      ctx.fillRect(x + 1, y + 3, BAY / 2 - 2, FLOOR - 5);
+    }
+    if (!night) {
+      ctx.fillStyle = 'rgba(236,232,226,.7)';
+      for (let c = 0; c <= COLS * 2; c++) ctx.fillRect(c * BAY / 2 - 0.5, 0, 1, FLOOR * ROWS);
+      ctx.fillStyle = '#3a2420';
+      for (let r = 0; r <= ROWS; r++) ctx.fillRect(0, r * FLOOR - 1.5, BAY * COLS, 3);
+    }
+  },
   // 玻璃裙房
   podium(ctx, night) {
     ctx.fillStyle = night ? '#000' : '#3c4a54';
@@ -169,8 +185,8 @@ export function facadeMaterial(style, widthM, floors) {
   const e = emissiveMap.clone(); e.repeat.set(rx, ry); e.offset.set(rand(), rand()); e.needsUpdate = true;
   const mat = new THREE.MeshStandardMaterial({
     map: m, emissiveMap: e, emissive: new THREE.Color(0xffffff), emissiveIntensity: 0,
-    roughness: style === 'fin' || style === 'podium' ? 0.35 : 0.55,
-    metalness: style === 'fin' || style === 'podium' ? 0.35 : 0.08,
+    roughness: style === 'fin' || style === 'podium' || style === 'amber' ? 0.35 : 0.55,
+    metalness: style === 'fin' || style === 'podium' || style === 'amber' ? 0.35 : 0.08,
   });
   mat.userData.facade = true;
   facadeMaterials.push(mat);

@@ -1,0 +1,232 @@
+<!doctype html>
+<!-- 开发辅助：从百度 19 级矢量图截图（.research/map-z19-*.png）按颜色提取道路中线、绿地与水面。
+     按 reg.js 把 9 块截图拼到沙盘范围的画布（每 P 像素 K 个画布像素），逐像素分类：
+     水面 (144,221,246)、绿地 (194,240,195)、道路（白色，≥ 248）。
+     道路：开运算去掉文字白边 → Zhang–Suen 细化 → 追踪折线 → Douglas–Peucker 简化，路宽取中线上距离变换的中位数 × 2；
+     绿地、水面：闭运算填掉文字留下的洞 → 连通域 → 外轮廓追踪 → 简化（不含内洞）。
+     结果（底图像素 P 坐标）放在 window.VMAP = { roads: [{ pts, w }], greens: [pts], water: [pts] }，w 为 P 像素；
+     画布上叠加显示（?show=roads|greens|water，缺省全部）。由 tools/vmap.mjs 读取后生成 data/ 下的文件。 -->
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#222;color:#ddd;font:12px monospace}canvas{display:block}</style>
+<canvas id="c"></canvas>
+<script type="module">
+import { REG, MAP19 } from './reg.js';
+const q = new URLSearchParams(location.search);
+const K = 2;                                         // 画布像素 / P 像素
+const X0 = 650, Y0 = 50, PW = 3150, PH = 1550;       // 沙盘范围（底图像素）
+const W = PW * K, H = PH * K, N = W * H;
+const c = document.getElementById('c'); c.width = W; c.height = H;
+const g = c.getContext('2d', { willReadFrequently: true });
+g.imageSmoothingEnabled = false;
+
+const load = src => new Promise((ok, err) => { const im = new Image(); im.onload = () => ok(im); im.onerror = err; im.src = src; });
+for (let i = 0; i < MAP19.length; i++) {
+  const name = `.research/map-z19-${i}.png`, im = await load('../' + name);
+  const [a, b, cc, d, e, f] = REG[name];
+  g.save();
+  g.setTransform(K * a, K * d, K * b, K * e, K * (cc - X0), K * (f - Y0));
+  g.drawImage(im, 0, 0);
+  g.restore();
+}
+const img = g.getImageData(0, 0, W, H).data;
+const near = (i, r, gg, b, t) => Math.abs(img[i] - r) <= t[0] && Math.abs(img[i + 1] - gg) <= t[1] && Math.abs(img[i + 2] - b) <= t[2];
+const water = new Uint8Array(N), green = new Uint8Array(N), road = new Uint8Array(N);
+for (let p = 0; p < N; p++) {
+  const i = p * 4;
+  if (!img[i + 3]) continue;
+  if (near(i, 144, 221, 246, [22, 16, 12])) water[p] = 1;
+  else if (near(i, 194, 240, 195, [20, 12, 22])) green[p] = 1;
+  else if (img[i] >= 248 && img[i + 1] >= 248 && img[i + 2] >= 248) road[p] = 1;
+}
+
+// 方形结构元的腐蚀 / 膨胀（行、列两遍滑动计数）
+function morph(m, r, erode) {
+  const pass = (src, horiz) => {
+    const out = new Uint8Array(N), n = horiz ? W : H, lines = horiz ? H : W;
+    for (let l = 0; l < lines; l++) {
+      const at = k => (horiz ? l * W + k : k * W + l);
+      let s = 0;
+      for (let k = 0; k < Math.min(r, n); k++) s += src[at(k)];
+      for (let k = 0; k < n; k++) {
+        if (k + r < n) s += src[at(k + r)];
+        if (k - r - 1 >= 0) s -= src[at(k - r - 1)];
+        const span = Math.min(n - 1, k + r) - Math.max(0, k - r) + 1;
+        out[at(k)] = erode ? (s === span ? 1 : 0) : (s > 0 ? 1 : 0);
+      }
+    }
+    return out;
+  };
+  return pass(pass(m, true), false);
+}
+const open = (m, r) => morph(morph(m, r, true), r, false);
+const close = (m, r) => morph(morph(m, r, false), r, true);
+
+// 3-4 倒角距离变换（到最近背景像素的距离，单位约为像素 × 3）
+function distance(m) {
+  const d = new Float32Array(N);
+  for (let p = 0; p < N; p++) d[p] = m[p] ? 1e9 : 0;
+  for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+    const p = y * W + x; if (!d[p]) continue;
+    let v = d[p];
+    if (x > 0) v = Math.min(v, d[p - 1] + 3);
+    if (y > 0) { v = Math.min(v, d[p - W] + 3); if (x > 0) v = Math.min(v, d[p - W - 1] + 4); if (x < W - 1) v = Math.min(v, d[p - W + 1] + 4); }
+    d[p] = v;
+  }
+  for (let y = H - 1; y >= 0; y--) for (let x = W - 1; x >= 0; x--) {
+    const p = y * W + x; if (!d[p]) continue;
+    let v = d[p];
+    if (x < W - 1) v = Math.min(v, d[p + 1] + 3);
+    if (y < H - 1) { v = Math.min(v, d[p + W] + 3); if (x < W - 1) v = Math.min(v, d[p + W + 1] + 4); if (x > 0) v = Math.min(v, d[p + W - 1] + 4); }
+    d[p] = v;
+  }
+  return d;
+}
+
+function rdp(pts, tol) {
+  if (pts.length < 3) return pts;
+  const [a, b] = [pts[0], pts.at(-1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy);
+  let k = 0, dm = 0;
+  for (let i = 1; i < pts.length - 1; i++) {
+    const d = L ? Math.abs((pts[i][0] - a[0]) * dy - (pts[i][1] - a[1]) * dx) / L : Math.hypot(pts[i][0] - a[0], pts[i][1] - a[1]);
+    if (d > dm) { dm = d; k = i; }
+  }
+  return dm <= tol ? [a, b] : [...rdp(pts.slice(0, k + 1), tol).slice(0, -1), ...rdp(pts.slice(k), tol)];
+}
+const toP = ([x, y]) => [+(x / K + X0).toFixed(1), +(y / K + Y0).toFixed(1)];
+const len = pts => pts.reduce((s, p, i) => s + (i ? Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
+
+// ── 道路 ──
+const roadM = open(road, 2);
+const dist = distance(roadM);
+const m = roadM.slice();
+{
+  let fg = []; for (let p = 0; p < N; p++) if (m[p]) fg.push(p);
+  const at = p => m[p];
+  for (let changed = true; changed;) {
+    changed = false;
+    for (const step of [0, 1]) {
+      const del = [];
+      for (const p of fg) {
+        const x = p % W, y = (p / W) | 0;
+        if (x < 1 || y < 1 || x >= W - 1 || y >= H - 1) continue;
+        const nb = [at(p - W), at(p - W + 1), at(p + 1), at(p + W + 1), at(p + W), at(p + W - 1), at(p - 1), at(p - W - 1)];
+        const B = nb[0] + nb[1] + nb[2] + nb[3] + nb[4] + nb[5] + nb[6] + nb[7];
+        if (B < 2 || B > 6) continue;
+        let A = 0; for (let k = 0; k < 8; k++) if (!nb[k] && nb[(k + 1) % 8]) A++;
+        if (A !== 1) continue;
+        if (step === 0 ? nb[0] * nb[2] * nb[4] || nb[2] * nb[4] * nb[6] : nb[0] * nb[2] * nb[6] || nb[0] * nb[4] * nb[6]) continue;
+        del.push(p);
+      }
+      for (const p of del) m[p] = 0;
+      if (del.length) { changed = true; fg = fg.filter(p => m[p]); }
+    }
+  }
+}
+const N8 = [1, -1, W, -W, W + 1, -W - 1, -W + 1, W - 1];
+const nbs = p => N8.map(o => p + o).filter(u => u >= 0 && u < N && Math.abs((u % W) - (p % W)) <= 1 && m[u]);
+// 节点：8 邻域一周 0→1 的跳变数不为 2（端点为 1，岔口 ≥ 3）。不能按邻点个数判断——细化结果的阶梯拐角有 3 个邻点
+const RING = [-W, -W + 1, 1, W + 1, W, W - 1, -1, -W - 1];
+const isNode = p => {
+  let A = 0;
+  for (let k = 0; k < 8; k++) if (!m[p + RING[k]] && m[p + RING[(k + 1) % 8]]) A++;
+  return A !== 2;
+};
+// 剪毛刺（像素级）：路沿锯齿会在细化结果上留下大量 1–3 px 的分叉。反复去掉端点 T 次，再从剩余骨架的端点沿被删像素
+// 条件膨胀 T 次，把真正的尽头路长回来
+{
+  const T = 8;
+  let sk = []; for (let p = 0; p < N; p++) if (m[p]) sk.push(p);
+  const removed = new Uint8Array(N);
+  for (let t = 0; t < T; t++) {
+    const ends = sk.filter(p => m[p] && nbs(p).length <= 1);
+    for (const p of ends) { m[p] = 0; removed[p] = 1; }
+  }
+  sk = sk.filter(p => m[p]);
+  let front = sk.filter(p => nbs(p).length === 1);
+  for (let t = 0; t < T && front.length; t++) {
+    const next = [];
+    for (const p of front) for (const o of N8) {
+      const u = p + o;
+      if (u >= 0 && u < N && removed[u] && !m[u] && Math.abs((u % W) - (p % W)) <= 1) { m[u] = 1; removed[u] = 0; next.push(u); }
+    }
+    front = next;
+  }
+}
+// 追踪：从节点出发沿骨架走到下一个节点；非节点像素只走一次。阶梯拐角处有多个候选时优先走到节点，否则取离上一点最远的
+const visited = new Uint8Array(N), pairs = new Set(), lines = [];
+const walk = (s, n) => {
+  const pts = [s]; let prev = s, cur = n;
+  for (;;) {
+    pts.push(cur);
+    if (isNode(cur)) {
+      const key = s < cur ? s * N + cur : cur * N + s;
+      if (pts.length === 2 && pairs.has(key)) return null;
+      pairs.add(key);
+      return pts;
+    }
+    visited[cur] = 1;
+    const cand = nbs(cur).filter(u => u !== prev && !visited[u] && u !== s || (u === s && pts.length > 3));
+    if (!cand.length) return pts;
+    const px = prev % W, py = (prev / W) | 0;
+    const d2 = u => ((u % W) - px) ** 2 + (((u / W) | 0) - py) ** 2;
+    const nodes = cand.filter(isNode);
+    const nxt = (nodes.length ? nodes : cand).sort((a, b) => d2(b) - d2(a))[0];
+    [prev, cur] = [cur, nxt];
+  }
+};
+for (let p = 0; p < N; p++) if (m[p] && isNode(p)) for (const u of nbs(p)) { if (visited[u]) continue; const l = walk(p, u); if (l) lines.push(l); }
+const roads = [];
+for (const l of lines) {
+  const pts = l.map(p => [p % W, (p / W) | 0]);
+  if (pts.length < 2) continue;     // 毛刺、短段留给 vmap.mjs 按图结构处理（这里删会把路截成虚线）
+  const ds = l.map(p => dist[p]).sort((a, b) => a - b);
+  roads.push({ pts: rdp(pts, 1.0 * K).map(toP), w: +((ds[ds.length >> 1] / 3) * 2 / K).toFixed(1) });
+}
+
+// ── 面：连通域外轮廓 ──
+function polygons(mask, minArea) {
+  const lab = new Int32Array(N), out = [];
+  let id = 0;
+  for (let s = 0; s < N; s++) {
+    if (!mask[s] || lab[s]) continue;
+    id++;
+    const stack = [s]; lab[s] = id; let area = 0;
+    while (stack.length) {
+      const p = stack.pop(); area++;
+      const x = p % W;
+      for (const u of [x > 0 ? p - 1 : -1, x < W - 1 ? p + 1 : -1, p - W, p + W]) if (u >= 0 && u < N && mask[u] && !lab[u]) { lab[u] = id; stack.push(u); }
+    }
+    if (area < minArea * K * K) continue;
+    // Moore 邻域外轮廓追踪：s 为该连通域最上最左的像素
+    const dirs = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+    const inC = (x, y) => x >= 0 && y >= 0 && x < W && y < H && lab[y * W + x] === id;
+    const sx = s % W, sy = (s / W) | 0, ring = [[sx, sy]];
+    let x = sx, y = sy, d = 7;
+    for (let guard = 0; guard < 4 * N; guard++) {
+      let found = false;
+      for (let k = 0; k < 8; k++) {
+        const nd = (d + 6 + k) % 8, nx = x + dirs[nd][0], ny = y + dirs[nd][1];
+        if (inC(nx, ny)) { x = nx; y = ny; d = nd; found = true; break; }
+      }
+      if (!found || (x === sx && y === sy)) break;
+      ring.push([x, y]);
+    }
+    const simp = rdp([...ring, ring[0]], 1.0 * K).slice(0, -1);
+    if (simp.length >= 3) out.push({ pts: simp.map(toP), area: area / K / K });
+  }
+  return out.sort((a, b) => b.area - a.area);
+}
+const greens = polygons(close(open(green, 1), 4), 150);
+const waters = polygons(close(water, 4), 400);
+
+window.VMAP = { roads, greens: greens.map(o => o.pts), water: waters.map(o => o.pts) };
+
+// 叠加显示
+g.globalAlpha = 0.55; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+const show = q.get('show') || 'roads,greens,water';
+const path = (pts, close) => { g.beginPath(); pts.forEach(([x, y], j) => (j ? g.lineTo : g.moveTo).call(g, (x - X0) * K, (y - Y0) * K)); if (close) g.closePath(); };
+if (show.includes('water')) for (const p of window.VMAP.water) { path(p, true); g.fillStyle = 'rgba(40,140,255,.6)'; g.fill(); }
+if (show.includes('greens')) for (const p of window.VMAP.greens) { path(p, true); g.fillStyle = 'rgba(40,200,60,.55)'; g.fill(); g.strokeStyle = '#7f7'; g.lineWidth = 2; g.stroke(); }
+if (show.includes('roads')) roads.forEach((r, i) => { path(r.pts); g.strokeStyle = `hsl(${(i * 47) % 360}, 90%, 60%)`; g.lineWidth = 3; g.stroke(); });
+document.title = 'ready';
+</script>

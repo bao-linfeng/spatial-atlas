@@ -1,0 +1,95 @@
+<!doctype html>
+<!-- 开发辅助：从百度全景路线截图（.research/pano-z19-*.png）提取道路中线。
+     按 reg.js 把 6 块截图拼到底图像素 P 坐标画布（沙盘范围，1 px = 1 P），取全景蓝线像素 → Zhang–Suen 细化 → 追踪折线 → Douglas–Peucker 简化。
+     结果（底图像素折线）放在 window.ROADS 与页面 <pre> 里；画布上叠加显示。?min=长度下限 px（缺省 20）&tol=简化容差 px（缺省 1.5） -->
+<meta charset="utf-8">
+<style>html,body{margin:0;background:#222;color:#ddd;font:12px monospace}canvas{display:block}pre{white-space:pre-wrap}</style>
+<canvas id="c"></canvas><pre id="out"></pre>
+<script type="module">
+import { REG } from './reg.js';
+const q = new URLSearchParams(location.search);
+const MIN = +(q.get('min') || 20), TOL = +(q.get('tol') || 1.5);
+const X0 = 650, Y0 = 50, W = 2150, H = 1300;      // 沙盘范围（底图像素）
+const c = document.getElementById('c'); c.width = W; c.height = H;
+const g = c.getContext('2d', { willReadFrequently: true });
+
+const load = src => new Promise((ok, err) => { const im = new Image(); im.onload = () => ok(im); im.onerror = err; im.src = src; });
+for (let i = 0; i < 6; i++) {
+  const name = `.research/pano-z19-${i}.png`, im = await load('../' + name);
+  const [a, b, cc, d, e, f] = REG[name];
+  g.save();
+  g.beginPath(); g.rect(0, 0, W, H); g.clip();
+  g.setTransform(a, d, b, e, cc - X0, f - Y0);
+  g.beginPath(); g.rect(0, 0, im.width, im.height - 40); g.clip();   // 截图底部约 35 px 为空白条
+  g.drawImage(im, 0, 0);
+  g.restore();
+}
+// 全景蓝线：线芯约 (115,155,197)、描边约 (100,125,195)；水面 g 高（约 221）、绿地 b 低，均可排除；图标文字另由折线长度过滤
+const img = g.getImageData(0, 0, W, H).data;
+let m = new Uint8Array(W * H);
+for (let i = 0; i < W * H; i++) {
+  const r = img[i * 4], gg = img[i * 4 + 1], b = img[i * 4 + 2];
+  m[i] = img[i * 4 + 3] > 0 && b > 160 && b - r > 55 && b - gg > 25 && gg < 175 && r < 140 ? 1 : 0;
+}
+// Zhang–Suen 细化
+const at = (x, y) => (x < 0 || y < 0 || x >= W || y >= H ? 0 : m[y * W + x]);
+for (let changed = true; changed;) {
+  changed = false;
+  for (const step of [0, 1]) {
+    const del = [];
+    for (let y = 1; y < H - 1; y++) for (let x = 1; x < W - 1; x++) {
+      if (!m[y * W + x]) continue;
+      const p = [at(x, y - 1), at(x + 1, y - 1), at(x + 1, y), at(x + 1, y + 1), at(x, y + 1), at(x - 1, y + 1), at(x - 1, y), at(x - 1, y - 1)];
+      const B = p.reduce((s, v) => s + v, 0);
+      if (B < 2 || B > 6) continue;
+      let A = 0; for (let k = 0; k < 8; k++) if (!p[k] && p[(k + 1) % 8]) A++;
+      if (A !== 1) continue;
+      if (step === 0 ? p[0] * p[2] * p[4] || p[2] * p[4] * p[6] : p[0] * p[2] * p[6] || p[0] * p[4] * p[6]) continue;
+      del.push(y * W + x);
+    }
+    for (const i of del) m[i] = 0;
+    if (del.length) changed = true;
+  }
+}
+// 追踪：端点（1 邻）与交叉点（≥3 邻）为节点，节点之间的像素链为一条折线
+const N8 = [[1, 0], [-1, 0], [0, 1], [0, -1], [1, 1], [-1, -1], [1, -1], [-1, 1]];
+const nb = (x, y) => N8.map(([dx, dy]) => [x + dx, y + dy]).filter(([u, v]) => at(u, v));
+const isNode = (x, y) => nb(x, y).length !== 2;
+const seen = new Set(), key = (x, y) => y * W + x, lines = [];
+const walk = (sx, sy, nx, ny) => {
+  const pts = [[sx, sy]]; let px = sx, py = sy, x = nx, y = ny;
+  for (;;) {
+    pts.push([x, y]);
+    const ek = [key(px, py), key(x, y)].sort().join();
+    if (seen.has(ek)) return null;
+    seen.add(ek);
+    if (isNode(x, y)) return pts;
+    const nxt = nb(x, y).find(([u, v]) => !(u === px && v === py));
+    if (!nxt) return pts;
+    [px, py, x, y] = [x, y, nxt[0], nxt[1]];
+  }
+};
+for (let y = 0; y < H; y++) for (let x = 0; x < W; x++) {
+  if (!m[key(x, y)] || !isNode(x, y)) continue;
+  for (const [u, v] of nb(x, y)) { const l = walk(x, y, u, v); if (l) lines.push(l); }
+}
+// 简化 + 过滤
+function rdp(pts, tol) {
+  if (pts.length < 3) return pts;
+  const [a, b] = [pts[0], pts.at(-1)], dx = b[0] - a[0], dy = b[1] - a[1], L = Math.hypot(dx, dy) || 1;
+  let k = 0, dm = 0;
+  for (let i = 1; i < pts.length - 1; i++) { const d = Math.abs((pts[i][0] - a[0]) * dy - (pts[i][1] - a[1]) * dx) / L; if (d > dm) { dm = d; k = i; } }
+  return dm <= tol ? [a, b] : [...rdp(pts.slice(0, k + 1), tol).slice(0, -1), ...rdp(pts.slice(k), tol)];
+}
+const len = pts => pts.reduce((s, p, i) => s + (i ? Math.hypot(p[0] - pts[i - 1][0], p[1] - pts[i - 1][1]) : 0), 0);
+const ROADS = lines.filter(l => len(l) >= MIN).map(l => rdp(l, TOL).map(([x, y]) => [x + X0, y + Y0]));
+window.ROADS = ROADS;
+// 叠加显示
+g.globalAlpha = 0.45; g.fillStyle = '#000'; g.fillRect(0, 0, W, H); g.globalAlpha = 1;
+ROADS.forEach((l, i) => {
+  g.strokeStyle = `hsl(${(i * 47) % 360}, 90%, 60%)`; g.lineWidth = 2; g.beginPath();
+  l.forEach(([x, y], j) => (j ? g.lineTo(x - X0, y - Y0) : g.moveTo(x - X0, y - Y0))); g.stroke();
+});
+document.getElementById('out').textContent = `${ROADS.length} 条折线\n` + JSON.stringify(ROADS);
+document.title = 'ready';
+</script>
