@@ -77,7 +77,7 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 
 ### 页面
 
-标注是 DOM 元素，每帧投影到屏幕（`core/labels.js`），不是 three.js 精灵。立面风格见 `core/textures.js` 的 `STYLES`（`punch` 白墙方窗为大数据园塔楼所加）。立面材质由 `facadeMaterial(style, widthM, floors)` 按 `style|开间数|层数` 缓存，并登记到 `facadeMaterials`，夜景和白模统一切换它们。所有动画走 `core/motion.js` 的 tween，由 `tick(dt)` 驱动，`advance(sec, step)` 可手动步进。`window.__park` 暴露 `{ scene, camera, controls, W, fly, runTour, applyNight, advance, toggleNight, select }`。
+标注是 DOM 元素，每帧投影到屏幕（`core/labels.js`），不是 three.js 精灵。立面风格见 `core/textures.js` 的 `STYLES`（`punch` 白墙方窗为大数据园塔楼所加；`strip` / `stripRed` / `curtain` / `endwall` / `louver` / `grayfin` / `xbrace` / `pavilion` 为创意园按全景所加）。立面材质由 `facadeMaterial(style, widthM, floors)` 按 `style|开间数|层数` 缓存，并登记到 `facadeMaterials`，夜景和白模统一切换它们。所有动画走 `core/motion.js` 的 tween，由 `tick(dt)` 驱动，`advance(sec, step)` 可手动步进。`window.__park` 暴露 `{ scene, camera, controls, W, fly, runTour, applyNight, advance, toggleNight, select }`。
 
 ## 苏南：坐标系（最关键）
 
@@ -101,15 +101,19 @@ MSYS_NO_PATHCONV=1 node tools/regress.mjs <playwright-core/index.mjs 的绝对�
 
 - 底图为 `parks/creative/docs/area-50m-map.png`（百度 50 m 比例尺矢量图，2559 px 宽），其像素即 `P` 坐标；0.48 m/像素（比例尺 50 m = 104 px），原点为底图像素 `(2225, 825)`（沙盘中心）。沙盘范围 `PLATE_PX` 为底图像素 (650, 50)–(3800, 1600)，东到龙沧路、南到北塘河，让太湖东路、龙沧路、湖兴路、湖西路在沙盘内闭合；`tools/buildings.mjs`、`tools/vmap.html` 里的范围要与它一致。`GRID_ANGLE` ≈ 29°，取 A 座主楼长轴；各楼朝向不一，个别用 `a` 覆盖。
 - 其余截图按 `parks/creative/tools/reg.js` 配准（POI 定位针针尖拟合相似变换）：`park-20m-*` 残差 ≤ 2 px；`lake-50m-map.png` 是 90% 浏览器缩放下截的，缩放比 1.138，与比例尺长度比一致。卫星图与同视野矢量图共用变换。
-- 主干道用像素颜色分类手工提取（黄色主干道、白色道路），逐行 / 逐列取中点；道路折线两端多取一点，由 `layout.js` 的 `clip` 截到沙盘内。
-- 楼栋与支路来自百度地图网页（用户已登录的 Chrome，经 web-access 的 CDP 代理在后台标签页操作）：后台页要把 `requestAnimationFrame` 换成定时器并伪造 `visibilityState` 才会重绘；二维卫星类型不出图，卫星图只能走「地球」模式（`map` 换成地球引擎对象，透视相机，按 `pixelToPoint` 读四角逐块配准）。百度墨卡托 → P 的变换在 `tools/reg.js` 的 `MERC`。
-- `data/` 下都是生成文件，不要手改：`buildings.js` 由 `tools/buildings.mjs` 从 `.research/baidu-buildings.json`（矢量瓦片 `renderData.building3d` 的顶面环）生成；`roads.js` / `greens.js` / `water.js` 由 `tools/vmap.html`（拼接 19 级矢量图截图，按颜色分出水面、绿地、白色路面；路面细化追踪中线并量路宽，面取外轮廓）+ `tools/vmap.mjs`（道路吸附、剪毛刺、补缺、去掉主干道、尽头接到主干道中线）生成。细化结果的阶梯拐角有 3 个邻点，节点要按 8 邻域跳变数判断，否则路会被截成碎段。`layout.js` 的园区各栋按轮廓中心 `at` 引用楼栋环，重新生成后要核对。
+- **以高德地图为准**（2026-11 起）：楼栋轮廓、支路、绿地、水面取自高德 19 级矢量图整幅截图 `.research/amap-z19.png`（6160 × 3170，只留底色 / 道路 / 楼栋、不带标注；`amap-z18-label.png` 为同视野 18 级带标注的对照图，19 级整幅截图时标注层不出图）。截图用 skill 的 `scripts/amap-capture.mjs`：无头浏览器打开 amap.com，借页面已加载的 JSAPI 2.0 新建一张 `AMap.Map`，不需要登录（用户 Chrome 的后台标签页里 JSAPI 已缓存 `requestAnimationFrame`，打补丁也不重绘）。GCJ-02 Web 墨卡托 → P 为 `reg.js` 的 `AMAP_MERC`（水面与百度数据 IoU 拟合，不含旋转）。用户给的 `docs/amap-100m-map.png` 只作对照。
+- 主干道：先按百度矢量图逐行 / 逐列取路面中点手工数字化，再用 `tools/amap-roads.mjs` 吸附到高德的主 / 次干道中线（同等级、同走向，双幅取中点，中值平滑），把输出抄回 `layout.js`；路口端点（湖兴路西端、龙沧路南端）手工对齐。道路折线两端多取一点，由 `layout.js` 的 `clip` 截到沙盘内。路宽沿用原值（高德按等级画固定宽度）。
+- 百度地图网页（用户已登录的 Chrome，经 web-access 的 CDP 代理在后台标签页操作）现在只提供楼高、卫星图和底图坐标：后台页要把 `requestAnimationFrame` 换成定时器并伪造 `visibilityState` 才会重绘；二维卫星类型不出图，卫星图只能走「地球」模式（`map` 换成地球引擎对象，透视相机，按 `pixelToPoint` 读四角逐块配准）。百度墨卡托 → P 的变换在 `tools/reg.js` 的 `MERC`。
+- `data/` 下都是生成文件，不要手改。流程：`run-page.mjs "parks/creative/tools/vmap.html?src=amap"`（EVAL 导出 `window.VMAP` 到 `.research/amap-vmap.json`）→ `node tools/buildings.mjs` → `node tools/vmap.mjs`（它 import `layout.js`，园区楼的 `at` 失配时会报错，所以先跑 buildings.mjs 再核对 `at`）。`vmap.html?src=amap` 按高德颜色分出水面、绿地、三档路面（主 / 次 / 支，输出等级 `cls`）和楼栋，路面细化追踪中线，面取外轮廓；`vmap.mjs` 做道路吸附、剪毛刺、补缺、去掉主干道、尽头接到主干道中线，急转（> 100°）处拆开免得车原地调头，路宽按等级 / 长度分档（高德支路一律同宽，看不出宽窄）。`buildings.mjs` 取高德轮廓，楼高按 `.research/baidu-buildings.json`（百度矢量瓦片 `renderData.building3d` 的顶面环）在 ±8 m 内平移匹配（两家楼栋普遍差 3–5 m）。细化结果的阶梯拐角有 3 个邻点，节点要按 8 邻域跳变数判断，否则路会被截成碎段。不带参数的 `vmap.html` / `vmap.mjs baidu` 是改用高德前的百度流程。
+- 园区各栋按轮廓中心 `at` 引用 `data/buildings.js` 的轮廓，重新生成后要核对。高德把 D、会议中心裙房、E 座画成一个轮廓，C 座主楼与南翼也是一个，`layout.js` 用 `cuts`（直线）+ `keep`（保留一侧的点）切开再各自退台。F 座高德只画成两块且形状粗，保留按卫星图量取的三栋圆角体量（`F_BLOCKS`）。
+- 园区 A–E 座的层数、楼高和立面按百度全景八方位对照（`.research/pano/<楼>.md`，skill `references/reconstruction.md` 第 6、7 节）：五栋都是 22–27 层，百度楼高（62–81 m）明显偏低，按数窗带改写，层高取 4 m。B 座的高德轮廓比实景短，用 `extend` 把西端推出 14 m 再用 `cuts` 切出浅灰西段。沿湖西路的场地高差（挡墙、底商）还没建，路面标高沿线有变化，缺高程数据。
 - 19 级矢量图截图 `.research/map-z19-*.png` 为 3 × 3 块，覆盖扩大后的沙盘（页面 UI 与地图控件隐藏，元数据见同名 json，配准见 `tools/reg.js` 的 `MAP19`）。太湖东路弧段以东、龙沧路、湖兴路、青丰路南段从这组截图按颜色逐列 / 逐行取路面中点（黄色主路 (255, 236, 186)，白色路面的中心虚线两侧合并）。楼栋瓦片 `.research/baidu-buildings.json` 按 "列_行" 存放，扩大时只补新瓦片（同一瓦片重读的环数与旧数据略有出入，旧瓦片保留原数据以免园区楼栋引用变化）。
 - `tools/pano.html` 的全景路线（`.research/pano-lines.json`、`pano-z19-*.png`，只覆盖扩大前的沙盘）已不再用于道路数据。改了 `layout.js` 的主干道后要重跑 `vmap.mjs`（它按主干道去掉重合的支路）。
 - 世茂香槟湖是 C 形水面（`LAKE` = `WATERS[0]`，含半岛内凹）。水面不在避让表里，`trees.js` 末尾直接剔除水里的树点；岸坡沿 `SHORES`（去掉被沙盘边界截断的边）。湖面满铺荷叶贴图（`build/water.js`，画布按 0.3 m/像素覆盖湖面外接矩形，用 `rng.texture`），`OPEN_WATER` 为卫星图上露出水面的几处。
 
 ## 开发辅助
 
+- 新建 / 扩展园区的取数流程（截图配准、百度网页截图与楼栋瓦片、颜色提取路网水系、接入校验）整理为项目 skill `.claude/skills/park-from-map/`，通用脚本在其 `scripts/` 下。
 - `tools/shot.html?park=sunan&cam=x,y,z&tgt=x,y,z`：iframe 载入园区，隐藏 UI，按指定机位截图。
 - `tools/jump.html?park=sunan`：模拟 6000 帧车辆运动，按类别统计沙盘内部的车流异常（`tools/carcheck.js`，见「车流」）。回归检查也包含这一项。
 - `parks/sunan/tools/crop.html` / `_overlay.html`：把参考底图或卫星图（`docs/`、`.research/sat5.png`）裁切后叠加 P 像素网格和现有路网，用于数字化道路。

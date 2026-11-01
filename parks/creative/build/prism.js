@@ -8,8 +8,19 @@ export const TILE_W = BAY_M * 8;
 
 const signedArea = pts => pts.reduce((s, p, i) => { const q = pts[(i + 1) % pts.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2;
 
-// 外墙（不含顶底）：poly 为场景米 [[x, z]]，y0–y1 为墙的上下沿
-export function wallGeometry(poly, y0, y1, floorH) {
+// 点是否在多边形内（射线法）
+export function inside([x, z], poly) {
+  let c = false;
+  for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
+    const [xi, zi] = poly[i], [xj, zj] = poly[j];
+    if ((zi > z) !== (zj > z) && x < (xj - xi) * (z - zi) / (zj - zi) + xi) c = !c;
+  }
+  return c;
+}
+
+// 外墙（不含顶底）：poly 为场景米 [[x, z]]，y0–y1 为墙的上下沿。
+// pick(a, b) 为假的边不建；center 为真时每条边的贴图横向居中（u 以 0.5 为中心，用于端墙上居中的一列阳台）
+export function wallGeometry(poly, y0, y1, floorH, { pick, center } = {}) {
   const pts = signedArea(poly) > 0 ? [...poly].reverse() : poly;    // 统一绕向，使法向朝外
   const pos = [], uv = [];
   const v0 = y0 / (8 * floorH), v1 = y1 / (8 * floorH);
@@ -17,8 +28,9 @@ export function wallGeometry(poly, y0, y1, floorH) {
   pts.forEach((a, i) => {
     const b = pts[(i + 1) % pts.length], len = Math.hypot(b[0] - a[0], b[1] - a[1]);
     if (len < 0.05) return;
-    const u0 = acc / TILE_W, u1 = (acc + len) / TILE_W;
+    const u0 = center ? 0.5 - len / 2 / TILE_W : acc / TILE_W, u1 = u0 + len / TILE_W;
     acc += len;
+    if (pick && !pick(a, b)) return;
     pos.push(a[0], y0, a[1], b[0], y0, b[1], b[0], y1, b[1], a[0], y0, a[1], b[0], y1, b[1], a[0], y1, a[1]);
     uv.push(u0, v0, u1, v0, u1, v1, u0, v0, u1, v1, u0, v1);
   });

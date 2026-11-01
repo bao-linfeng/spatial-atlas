@@ -1,11 +1,14 @@
-// 百度 19 级矢量图提取结果 → data/roads.js、data/greens.js、data/water.js（底图像素 P 坐标）
-// 用法：tools/vmap.html 跑完后把 window.VMAP 存为 .research/vmap.json，再 node parks/creative/tools/vmap.mjs
+// 19 级矢量图提取结果 → data/roads.js、data/greens.js、data/water.js（底图像素 P 坐标）
+// 用法：tools/vmap.html?src=amap 跑完后把 window.VMAP 存为 .research/amap-vmap.json，再 node parks/creative/tools/vmap.mjs。
+// 现用高德（amap）；node vmap.mjs baidu 读 .research/vmap.json（百度 19 级矢量图，tools/vmap.html 不带参数），为改用高德前的做法
 // 道路：端点吸附成节点 → 收缩岔口处的极短边 → 反复剪毛刺、合并度为 2 的节点 → 补缺 → 去掉与 layout 主干道重合的线 →
 //       尽头路若停在主干道边上，延伸到主干道中线 → 丢掉短的尽头段。路宽按矢量图白色路面宽度分三档
 import { readFileSync, writeFileSync } from 'node:fs';
 
 const here = new URL('..', import.meta.url);
-const V = JSON.parse(readFileSync(new URL('.research/vmap.json', here), 'utf8'));
+const SRC = process.argv[2] === 'baidu' ? 'baidu' : 'amap';
+const V = JSON.parse(readFileSync(new URL(SRC === 'amap' ? '.research/amap-vmap.json' : '.research/vmap.json', here), 'utf8'));
+const SRC_NAME = SRC === 'amap' ? '高德 19 级矢量图截图（.research/amap-z19.png，tools/vmap.html?src=amap 按颜色提取）' : '百度 19 级矢量图截图（.research/vmap.json，tools/vmap.html 按颜色提取）';
 
 const SNAP = 3, TINY = 4, SPUR = 12, GAP = 26, MIN_END = 24, MIN_LEN = 10;   // 均为 P 像素
 const d2 = (p, q) => Math.hypot(p[0] - q[0], p[1] - q[1]);
@@ -21,9 +24,14 @@ const nodeOf = p => {
   const k = cell(...p); grid.set(k, [...(grid.get(k) || []), nodes.length - 1]);
   return nodes.length - 1;
 };
-let edges = V.roads.map(r => ({ pts: r.pts, a: nodeOf(r.pts[0]), b: nodeOf(r.pts.at(-1)), wl: r.w * len(r.pts), l: len(r.pts) }));
+// cl：高德路面等级（1 主 2 次 3 支）→ 长度，合并时累加
+let edges = V.roads.map(r => ({ pts: r.pts, a: nodeOf(r.pts[0]), b: nodeOf(r.pts.at(-1)), wl: r.w * len(r.pts), l: len(r.pts), cl: { [r.cls || 3]: len(r.pts) } }));
 const degree = () => { const d = new Map(); for (const e of edges) { d.set(e.a, (d.get(e.a) || 0) + 1); d.set(e.b, (d.get(e.b) || 0) + 1); } return d; };
-const mergeW = (e1, e2) => ({ wl: e1.wl + e2.wl, l: e1.l + e2.l });
+const mergeW = (e1, e2) => {
+  const cl = { ...e1.cl };
+  for (const [k, v] of Object.entries(e2.cl)) cl[k] = (cl[k] || 0) + v;
+  return { wl: e1.wl + e2.wl, l: e1.l + e2.l, cl };
+};
 
 // 收缩极短边（岔口一团节点像素之间的小段）
 for (let changed = true; changed;) {
@@ -90,12 +98,12 @@ for (let round = 0; round < 20; round++) {
       const cu = (dx * u.t[0] + dy * u.t[1]) / dist, cv = -(dx * v.t[0] + dy * v.t[1]) / dist;
       if (cu > 0.82 && cv > 0.82) { bd = dist; best = v; }
     }
-    if (best) { edges.push({ pts: [u.p, best.p], a: u.n, b: best.n, wl: 0, l: 0 }); used.add(u.n); used.add(best.n); }
+    if (best) { edges.push({ pts: [u.p, best.p], a: u.n, b: best.n, wl: 0, l: 0, cl: {} }); used.add(u.n); used.add(best.n); }
   }
   mergeDeg2();
 }
 
-// 去掉主干道：layout 的主干道中线（场景米 → P）附近的线（矢量图上湖西路、青丰路、湖兴路也是白色宽路）
+// 去掉主干道：layout 的主干道中线（场景米 → P）附近的线（矢量图上的主干道本身）
 const L = await import(new URL('layout.js', here).href);
 const toP = ([x, z]) => [x / L.PX + L.ORIGIN[0], z / L.PX + L.ORIGIN[1]];
 const mains = L.ROADS.map(r => ({ pts: r.pts.map(toP), w: r.w / L.PX }));
@@ -158,16 +166,41 @@ function rdp(pts, tol) {
   }
   return dm <= tol ? [a, b] : [...rdp(pts.slice(0, k + 1), tol).slice(0, -1), ...rdp(pts.slice(k), tol)];
 }
-// 路宽档位（m）：矢量图白色路面宽 ≥ 10 px 为 8 m 的小区主路，≥ 6 px 为 6 m，其余 4.5 m
-const width = e => { const w = e.l ? e.wl / e.l : 5; return w >= 10 ? 8 : w >= 6 ? 6 : 4.5; };
+// 路宽档位（m）。百度：矢量图白色路面宽 ≥ 10 px 为 8 m 的小区主路，≥ 6 px 为 6 m，其余 4.5 m。
+// 高德：路面按等级画固定宽度（支路一律约 4.5 px），看不出宽窄：主 / 次干道色（cls 1、2，如园区环路创意路）占一半以上长度的
+// 取 8 m；支路两个岔口之间长 100 m 以上的（小区主路、贯通的支路）取 6 m，其余 4.5 m
+const width = e => {
+  const w = e.l ? e.wl / e.l : 5;
+  if (SRC === 'baidu') return w >= 10 ? 8 : w >= 6 ? 6 : 4.5;
+  const major = ((e.cl[1] || 0) + (e.cl[2] || 0)) / (e.l || 1);
+  return major > 0.5 ? 8 : len(e.pts) * L.PX >= 100 ? 6 : 4.5;
+};
+// 急转处拆开：两条路在岔口只剩两段时会被合并成一条，拐点转向 > 100°（V 形折返）时车会原地调头，拆成两条尽头路。
+// 转角按前后各 12 px 以外的点量（简化后的折返常被分到两个相邻顶点上）
+const turn = (a, b, c) => {
+  const u = [b[0] - a[0], b[1] - a[1]], v = [c[0] - b[0], c[1] - b[1]];
+  return Math.acos(Math.max(-1, Math.min(1, (u[0] * v[0] + u[1] * v[1]) / (Math.hypot(...u) * Math.hypot(...v) || 1)))) * 180 / Math.PI;
+};
+const splitSharp = pts => {
+  for (let i = 1; i < pts.length - 1; i++) {
+    let j = i - 1, k = i + 1;
+    while (j > 0 && d2(pts[j], pts[i]) < 12) j--;
+    while (k < pts.length - 1 && d2(pts[k], pts[i]) < 12) k++;
+    if (turn(pts[j], pts[i], pts[k]) > 100) return [...splitSharp(pts.slice(0, i + 1)), ...splitSharp(pts.slice(i))];
+  }
+  return [pts];
+};
 const roads = edges
-  .map(e => ({ pts: rdp(e.pts, 1).map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]), w: width(e) }))
+  .flatMap(e => {
+    const parts = splitSharp(rdp(e.pts, 1)), keep = parts.length > 1 ? parts.filter(p => len(p) >= MIN_END) : parts;   // 拆出的短头丢掉
+    return keep.map(p => ({ pts: p.map(([x, y]) => [Math.round(x * 10) / 10, Math.round(y * 10) / 10]), w: width(e) }));
+  })
   .sort((p, q) => p.pts[0][0] - q.pts[0][0] || p.pts[0][1] - q.pts[0][1]);
 
-const head = what => `// 由 tools/vmap.mjs 自 .research/vmap.json（tools/vmap.html 从百度 19 级矢量图截图按颜色提取）生成，请勿手改。\n// ${what}\n`;
+const head = what => `// 由 tools/vmap.mjs 自${SRC_NAME}生成，请勿手改。\n// ${what}\n`;
 writeFileSync(new URL('data/roads.js', here), head('支路、小区与园区内部道路中线（底图像素 P 坐标），w 为路面宽 m；已去掉与 layout.js 主干道重合的线。') +
   `export default [\n${roads.map(r => `  { w: ${r.w}, pts: ${JSON.stringify(r.pts)} },`).join('\n')}\n];\n`);
 const polys = list => `export default [\n${list.map(p => `  ${JSON.stringify(p.map(([x, y]) => [Math.round(x), Math.round(y)]))},`).join('\n')}\n];\n`;
 writeFileSync(new URL('data/greens.js', here), head('绿地外轮廓（底图像素 P 坐标，按面积从大到小，不含内洞）。') + polys(V.greens));
-writeFileSync(new URL('data/water.js', here), head('水面外轮廓（底图像素 P 坐标，按面积从大到小）：世茂香槟湖、北塘河、澡港河被桥分成的几段、沙盘边上的河与水木年华的水池。') + polys(V.water));
+writeFileSync(new URL('data/water.js', here), head('水面外轮廓（底图像素 P 坐标，按面积从大到小）：世茂香槟湖、北塘河、澡港河（被桥分成几段）、沙盘边上的河与小区水池。') + polys(V.water));
 console.log(`道路 ${V.roads.length} 段 → ${roads.length} 条（总长 ${Math.round(roads.reduce((s, r) => s + len(r.pts), 0) * L.PX)} m）；绿地 ${V.greens.length}；水面 ${V.water.length}`);

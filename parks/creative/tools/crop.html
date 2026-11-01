@@ -1,6 +1,6 @@
 <!doctype html>
 <!-- 开发辅助：把参考截图按配准变换到「底图像素 P 坐标」（docs/area-50m-map.png 的像素），裁切并叠加 P 网格与现有布局，用于数字化。
-     ?img=park-20m-sat.png&x0=&y0=&x1=&y1=&s=4&step=10[&raw][&layout][&ov=x,y;x,y|...]
+     ?img=park-20m-sat.png&x0=&y0=&x1=&y1=&s=4&step=10[&raw][&layout][&ov=x,y;x,y|...][&ovc=%23000]
      img 含 * 时把 0–5 号六块分块截图拼在一起（如 .research/sat-z19-*.png，各块底部 40 px 空白条不画）；
      raw：不做配准，网格为截图自身像素（用于取配准控制点）；bld：叠加百度楼栋轮廓（data/buildings.js，按高度着色）；roads：叠加矢量图提取的道路（data/roads.js，标序号） -->
 <meta charset="utf-8">
@@ -57,7 +57,7 @@ const step = +(q.get('step') || 50), scale = +(q.get('s') || 1);
     g.stroke();
   };
   (q.get('ov') || '').split('|').filter(Boolean).forEach((s, i) =>
-    line(s.split(';').map(p => p.split(',').map(Number)), ['#ff00ff', '#00c000', '#ff8800', '#00aaff'][i % 4]));
+    line(s.split(';').map(p => p.split(',').map(Number)), q.get('ovc') || ['#ff00ff', '#00c000', '#ff8800', '#00aaff'][i % 4]));   // ovc：统一颜色（如 %23000）
   // 叠加现有布局（场景米 → P）：道路中线、水系、红线、绿地、建筑落地轮廓
   if (q.has('layout')) {
     const L = await import('../layout.js');

@@ -20,6 +20,18 @@ const lit = () => {
   return r < 0.34 ? `hsl(${36 + rand() * 10}, 90%, ${62 + rand() * 18}%)` : r < 0.5 ? '#bcd8ff' : '#000';
 };
 
+// 横向带窗：每层上部一条蓝玻璃带，下部为窗间墙（wall 色），竖框（mullion 色）每半开间一道
+function stripFacade(ctx, night, wall, mullion) {
+  ctx.fillStyle = night ? '#000' : wall;
+  ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+  for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS * 2; c++) {
+    const x = c * BAY / 2, y = r * FLOOR + 3, h = FLOOR - 13;
+    ctx.fillStyle = night ? lit() : `hsl(${205 + rand() * 6}, ${30 + rand() * 8}%, ${42 + rand() * 9}%)`;
+    ctx.fillRect(x, y, BAY / 2, h);
+  }
+  if (!night) { ctx.fillStyle = mullion; for (let c = 0; c <= COLS * 2; c++) ctx.fillRect(c * BAY / 2 - 1, 0, 2, FLOOR * ROWS); }
+}
+
 // 每种立面：draw(ctx, isNight)
 const STYLES = {
   // 白色网格框 + 浅灰蓝玻璃（41号楼）
@@ -141,6 +153,86 @@ const STYLES = {
       for (let r = 0; r <= ROWS; r++) ctx.fillRect(0, r * FLOOR - 1.5, BAY * COLS, 3);
     }
   },
+  // 白色框架 + 蓝色横向带窗，每层一条（常州创意产业园 A 座塔楼长立面，百度全景）
+  strip(ctx, night) { stripFacade(ctx, night, '#f0f0ec', '#dcdcd6'); },
+  // 同上，窗间墙与竖框为红棕色（B 座）
+  stripRed(ctx, night) { stripFacade(ctx, night, '#8a4a3a', '#6e3a2e'); },
+  // 蓝灰玻璃幕墙 + 每层一道细浅灰横线、密竖框（创意园 C / D / E 座）
+  curtain(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#6d7e8a';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS * 2; c++) {
+      const x = c * BAY / 2, y = r * FLOOR;
+      ctx.fillStyle = night ? lit() : `hsl(${204 + rand() * 6}, ${12 + rand() * 6}%, ${52 + rand() * 10}%)`;
+      ctx.fillRect(x, y + 6, BAY / 2, FLOOR - 6);
+    }
+    if (!night) {
+      ctx.fillStyle = 'rgba(40,52,60,.35)';
+      for (let c = 0; c <= COLS * 2; c++) ctx.fillRect(c * BAY / 2 - 0.5, 0, 1, FLOOR * ROWS);
+      ctx.fillStyle = '#d3d7d8';
+      for (let r = 0; r < ROWS; r++) ctx.fillRect(0, r * FLOOR, BAY * COLS, 6);
+    }
+  },
+  // 塔楼端头：白色实墙，中间一列竖向阳台（窄窗 + 深色栏板）（创意园 A / B 座东西端）
+  endwall(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#efefea';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    for (let r = 0; r < ROWS; r++) {
+      const x = 3.3 * BAY, y = r * FLOOR + 4, w = 1.4 * BAY, h = FLOOR - 7;
+      if (night) { ctx.fillStyle = lit(); ctx.fillRect(x, y, w, h); continue; }
+      ctx.fillStyle = `hsl(205, 16%, ${34 + rand() * 8}%)`; ctx.fillRect(x, y, w, h);
+      ctx.fillStyle = '#5b6266'; ctx.fillRect(x, y + h * 0.62, w, h * 0.38);
+    }
+    if (!night) { ctx.fillStyle = 'rgba(0,0,0,.05)'; for (let r = 0; r < ROWS * 2; r++) ctx.fillRect(0, r * FLOOR / 2, BAY * COLS, 1); }
+  },
+  // 红棕色横向百叶实墙与蓝玻璃幕墙各半（A 座南侧裙房）
+  louver(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#7c4436';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    if (!night) { ctx.fillStyle = 'rgba(30,12,8,.35)'; for (let y = 0; y < FLOOR * ROWS; y += 4) ctx.fillRect(0, y, BAY * COLS / 2, 1.5); }
+    for (let r = 0; r < ROWS; r++) for (let c = COLS; c < COLS * 2; c++) {
+      const x = c * BAY / 2, y = r * FLOOR;
+      ctx.fillStyle = night ? (rand() < 0.6 ? '#ffd9a6' : '#000') : `hsl(207, 30%, ${36 + rand() * 10}%)`;
+      ctx.fillRect(x + 1, y + 1, BAY / 2 - 2, FLOOR - 2);
+    }
+  },
+  // 浅灰实墙 + 竖向深色百叶条（B 座西段）
+  grayfin(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#d9d9d4';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    for (let c = 0; c < COLS; c++) {
+      if (c % 2) continue;
+      const x = c * BAY + BAY * 0.35;
+      if (night) { for (let r = 0; r < ROWS; r++) { ctx.fillStyle = lit(); ctx.fillRect(x, r * FLOOR + 4, BAY * 0.3, FLOOR - 8); } continue; }
+      ctx.fillStyle = '#4c5257'; ctx.fillRect(x, 0, BAY * 0.3, FLOOR * ROWS);
+    }
+  },
+  // 通高玻璃中庭 + 白色 X 形交叉斜撑，一张贴图一个 X（创意园 C 座北立面、会议中心）
+  xbrace(ctx, night) {
+    const W = BAY * COLS, H = FLOOR * ROWS;
+    ctx.fillStyle = night ? '#000' : '#4f6170';
+    ctx.fillRect(0, 0, W, H);
+    for (let r = 0; r < ROWS * 2; r++) for (let c = 0; c < COLS * 2; c++) {
+      ctx.fillStyle = night ? (rand() < 0.7 ? '#ffd9a6' : '#000') : `hsl(205, 20%, ${38 + rand() * 12}%)`;
+      ctx.fillRect(c * BAY / 2 + 1, r * FLOOR / 2 + 1, BAY / 2 - 2, FLOOR / 2 - 2);
+    }
+    if (night) return;
+    ctx.strokeStyle = '#eceeec'; ctx.lineWidth = 12; ctx.lineCap = 'square';
+    ctx.beginPath(); ctx.moveTo(0, 0); ctx.lineTo(W, H); ctx.moveTo(W, 0); ctx.lineTo(0, H); ctx.stroke();
+    ctx.lineWidth = 8; ctx.strokeRect(4, 4, W - 8, H - 8);
+  },
+  // 白色石材实墙 + 大块浅色反光玻璃，每 4 开间一道白墙垛（创意园 F 座）
+  pavilion(ctx, night) {
+    ctx.fillStyle = night ? '#000' : '#ecebe6';
+    ctx.fillRect(0, 0, BAY * COLS, FLOOR * ROWS);
+    for (let r = 0; r < ROWS; r++) for (let c = 0; c < COLS * 2; c++) {
+      if (c % 8 === 0) continue;
+      const x = c * BAY / 2, y = r * FLOOR + 6, h = FLOOR - 9;
+      ctx.fillStyle = night ? lit() : `hsl(204, ${12 + rand() * 6}%, ${34 + rand() * 9}%)`;
+      ctx.fillRect(x, y, BAY / 2, h);
+    }
+    if (!night) { ctx.fillStyle = '#7f8a90'; for (let c = 0; c <= COLS * 2; c++) if (c % 8) ctx.fillRect(c * BAY / 2 - 0.5, 0, 1, FLOOR * ROWS); }
+  },
   // 玻璃裙房
   podium(ctx, night) {
     ctx.fillStyle = night ? '#000' : '#3c4a54';
@@ -171,6 +263,9 @@ function baseTextures(style) {
   return v;
 }
 
+// 以玻璃为主的立面：反射更强、更光滑
+const GLASSY = new Set(['fin', 'podium', 'amber', 'curtain', 'xbrace']);
+
 // 夜景时统一调节的材质列表
 export const facadeMaterials = [];
 const matCache = new Map();
@@ -183,10 +278,11 @@ export function facadeMaterial(style, widthM, floors) {
   const rx = bays / COLS, ry = floors / ROWS;
   const m = map.clone(); m.repeat.set(rx, ry); m.needsUpdate = true;
   const e = emissiveMap.clone(); e.repeat.set(rx, ry); e.offset.set(rand(), rand()); e.needsUpdate = true;
+  const glassy = GLASSY.has(style);
   const mat = new THREE.MeshStandardMaterial({
     map: m, emissiveMap: e, emissive: new THREE.Color(0xffffff), emissiveIntensity: 0,
-    roughness: style === 'fin' || style === 'podium' || style === 'amber' ? 0.35 : 0.55,
-    metalness: style === 'fin' || style === 'podium' || style === 'amber' ? 0.35 : 0.08,
+    roughness: glassy ? 0.35 : 0.55,
+    metalness: glassy ? 0.35 : 0.08,
   });
   mat.userData.facade = true;
   facadeMaterials.push(mat);
@@ -228,13 +324,13 @@ export function roadTexture(kind) {
 }
 
 // 楼顶 / 门头标识文字
-export function signTexture(text) {
+export function signTexture(text, color = '#d0312d') {
   const [c, ctx] = makeCanvas(512, 128);
   ctx.clearRect(0, 0, 512, 128);
-  ctx.fillStyle = '#d0312d';
+  ctx.fillStyle = color;
   ctx.font = 'bold 92px "Microsoft YaHei", "PingFang SC", sans-serif';
   ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-  ctx.fillText(text, 256, 68);
+  ctx.fillText(text, 256, 68, 496);   // 过长时压窄
   const t = new THREE.CanvasTexture(c);
   t.colorSpace = THREE.SRGBColorSpace;
   return t;

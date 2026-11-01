@@ -37,13 +37,13 @@ export function buildRoads(ctx) {
   const huxiY = groundRoad(ctx, huxi, HUXI_W, { lamp: 30 }) + 0.05;
   ctx.place('湖西路', V3(...insertY(P(1650, 730), 3)));
   const qingfengY = groundRoad(ctx, qingfeng, QINGFENG_W, { lamp: 30 }) + 0.05;
-  ctx.place('青丰路', V3(...insertY(P(1080, 985), 3)));
+  ctx.place('青丰路', V3(...insertY(P(1100, 975), 3)));
   const wushanY = Math.max(...[wushanN, wushanS].map(l => groundRoad(ctx, l, WUSHAN_W, { lamp: 30 }))) + 0.05;
   ctx.place('巫山路', V3(...insertY(P(950, 560), 3)));
   const huxingY = groundRoad(ctx, huxing, HUXING_W, { lamp: 30 }) + 0.05;
   ctx.place('湖兴路', V3(...insertY(P(2450, 1244), 3)));
   const longcangY = groundRoad(ctx, longcang, LONGCANG_W, { lamp: 30 }) + 0.05;
-  ctx.place('龙沧路', V3(...insertY(P(3696, 860), 3)));
+  ctx.place('龙沧路', V3(...insertY(P(3690, 860), 3)));
 
   // 车流：车辆只在沙盘边缘出入，或沿闭环循环（分类与修法见 CLAUDE.md「车流」）。
   // 巫山路南北两段隔太湖东路相对（端点错开约 5 m），车道连成一条直行穿过路口：两个端点换成它们的中点，免得路口里横移一段

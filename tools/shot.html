@@ -1,5 +1,5 @@
 <!doctype html>
-<!-- 开发辅助：无头截图，?park=sunan&cam=x,y,z&tgt=x,y,z -->
+<!-- 开发辅助：无头截图，?park=sunan&cam=x,y,z&tgt=x,y,z[&fov=度] -->
 <meta charset="utf-8">
 <style>html,body{margin:0;overflow:hidden}iframe{border:0;width:100vw;height:100vh}</style>
 <iframe id="f"></iframe>
@@ -13,7 +13,13 @@ const iv = setInterval(async () => {
   clearInterval(iv);
   for (const el of w.document.querySelectorAll('#labels,header,aside,nav,footer,.topbar')) el.style.display = 'none';
   await p.advance(7, 0.25);
+  // fov：垂直视场角（度）；给出时按人眼机位处理，放开俯仰与距离限制（用于对照街景全景）
+  if (q.get('fov')) {
+    p.camera.fov = +q.get('fov'); p.camera.updateProjectionMatrix();
+    p.controls.maxPolarAngle = Math.PI; p.controls.minDistance = 0;
+  }
   p.controls.target.set(...tgt); p.camera.position.set(...cam); p.controls.update();
   await p.advance(0.1);
+  document.title = 'ready';   // run-page.mjs 据此截图
 }, 100);
 </script>

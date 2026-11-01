@@ -6,6 +6,25 @@ const PARK20 = [0.753676, 0.00056, 338.8167, -0.00056, 0.753676, 165.3394];
 // lake-50m：另一缩放级（50 m 比例尺 91 px，底图 104 px），麦当劳、常高新 CHTC、盒子艺术 3 点，残差 ≤ 0.3 px；德馨幼儿园校核差约 2.7 px
 const LAKE50 = [1.138311, 0.001614, 783.199, -0.001614, 1.138311, 43.8527];
 
+// amap-100m：用户给的高德 100 m 比例尺矢量图（amap.com 网页截图，对照用）。以水面色块与百度水面的 IoU 最大拟合相似变换（IoU 0.74）
+const AMAP100 = [1.624338, 0.004315, 649.391548, -0.004315, 1.624338, 38.719028];
+
+// 高德（GCJ-02）Web 墨卡托 (X, Y)（米，Y 向北）→ P：P.x = s·X + c，P.y = −s·Y + f，不含旋转。
+// 拟合：.research/amap-z19.png 的水面色块 (130,220,250) 与百度 19 级矢量图提取的水面（改用高德数据前的 data/water.js）IoU 最大，
+// IoU 0.747；放开旋转只升到 0.748（旋转 −0.2°），按两家坐标系之间理应只有平移取 0。主干道吸附时太湖东路西段、巫山路两家相差 ≤ 2 m
+export const AMAP_MERC = { s: 1.776352051, c: -23726292.4116, f: 6641663.57279 };
+const R_EARTH = 6378137;
+export const gcjMerc = ([lng, lat]) => [R_EARTH * lng * Math.PI / 180, R_EARTH * Math.log(Math.tan(Math.PI / 4 + lat * Math.PI / 360))];
+// 高德 JSAPI 截图（.research/amap-*.png，元数据见同名 json，capture 用 deviceScaleFactor 1）：css 像素 (u, v) → P。
+// 每 css 像素 2πR / 256 / 2^zoom 墨卡托米，视口中心为 center
+function amap({ center, zoom, size: [w, h] }) {
+  const r = 2 * Math.PI * R_EARTH / 256 / 2 ** zoom, [Xc, Yc] = gcjMerc(center), { s, c, f } = AMAP_MERC;
+  return [s * r, 0, s * (Xc - w / 2 * r) + c, 0, s * r, -s * (Yc + h / 2 * r) + f];
+}
+// 19 级整幅（6160 × 3170，覆盖沙盘外扩约 30 m）：amap-z19.png 只留底色 / 道路 / 楼栋、不带标注，供 vmap.html?src=amap 提取；
+// amap-z18-label.png 同视野、18 级带标注（19 级整幅截图时标注层不出图），供对照路名、POI
+const AMAP19 = amap({ center: [119.996979, 31.810573], zoom: 19, size: [6160, 3170] });
+
 // 百度墨卡托 (X, Y) → P：P.x = a·X − b·Y + c，P.y = −b·X − a·Y + f（Y 向北，P 向南）。
 // 在已知中心、缩放级的截图（.research/baidu-pano-z18.png）上自动识别 5 个定位针针尖（麦当劳、常高新 CHTC、盒子艺术、
 // 之上便利店、优学东方）与底图拟合，残差 ≤ 1.2 px（约 0.6 m），旋转约 0.01°
@@ -56,6 +75,9 @@ export const REG = {
   'park-20m-map.png': PARK20,
   'park-20m-sat.png': PARK20,
   'lake-50m-map.png': LAKE50,
+  'amap-100m-map.png': AMAP100,
+  '.research/amap-z19.png': AMAP19,
+  '.research/amap-z18-label.png': amap({ center: [119.996979, 31.810573], zoom: 18, size: [3080, 1585] }),
   '.research/baidu-pano-z18.png': baidu({ center: [13358712.006, 3716594.774], centerPx: [854, 421], zoom: 18, rect: [0, -23.3333], dpr: 1.5 }),
   ...tiles,
 };
